@@ -1,18 +1,16 @@
 package com.itniuma.bigevent.controller;
 
 import com.itniuma.bigevent.pojo.Result;
+import com.itniuma.bigevent.utils.AliOssUtil;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.io.IOException;
 import java.util.UUID;
 
 @RestController
 public class FileUploadController {
     @PostMapping("/upload")
-    public Result<String> upload(MultipartFile file) throws IOException {
+    public Result<String> upload(MultipartFile file) throws Exception {
         // 将文件内容存储到本地磁盘上
         // 使用uuid保证文件名唯一，从而防止文件被覆盖
         String originalFilename = file.getOriginalFilename();
@@ -26,7 +24,8 @@ public class FileUploadController {
                 * 但是，显式调用 toString() 更加明确和直观，有助于提高代码的可读性和维护性。
                 * */
                 .substring(originalFilename.lastIndexOf("."));
-        file.transferTo(new File("C:\\Users\\许发明\\Desktop\\files\\" + fileName));
-        return Result.success("http://localhost:8080/" + fileName);
+        // file.transferTo(new File("C:\\Users\\许发明\\Desktop\\files\\" + fileName));
+        String url = AliOssUtil.uploadFile(fileName, file.getInputStream());
+        return Result.success(url);
     }
 }

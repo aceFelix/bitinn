@@ -1,13 +1,17 @@
 spring:
   application:
     name: big-event
+  # 配置Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
   # 配置数据库
   datasource:
     url: jdbc:mysql://localhost:3306/big_event
     username: root
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-
 
 # 配置MyBatis驼峰命名转换
 mybatis:
