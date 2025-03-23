@@ -1,0 +1,35 @@
+# 多环境开发，单文件配置
+
+# 通用信息，多环境下通用的属性
+# 如果通用信息和特定环境信息冲突，以特定环境为准
+server:
+  servlet:
+    context-path: /big-event
+# 指定生效的环境（dev）
+spring:
+  profiles:
+    active: dev
+---
+# 开发环境
+spring:
+  config:
+    activate:
+      on-profile: dev
+server:
+  port: 8081
+---
+# 测试环境
+spring:
+  config:
+    activate:
+      on-profile: test
+server:
+  port: 8082
+---
+# 生产环境
+spring:
+  config:
+    activate:
+      on-profile: prod
+server:
+  port: 8083

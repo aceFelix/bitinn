@@ -12,7 +12,6 @@ spring:
     username: root
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-
 # 配置MyBatis驼峰命名转换
 mybatis:
   configuration:

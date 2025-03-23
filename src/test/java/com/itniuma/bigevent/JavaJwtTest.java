@@ -19,7 +19,7 @@ public class JavaJwtTest {
         claims.put("password","123456");
         String token = JWT.create()
                 .withClaim("user", claims) // 载荷中存放自定义信息
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 设置过期时间
+                .withExpiresAt(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 365)) // 设置过期时间为365天
                 .sign(Algorithm.HMAC256("itniuma")); // 设置加密算法
         System.out.println(token);
     }
@@ -27,8 +27,8 @@ public class JavaJwtTest {
     @Test
     void parseToken() {
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" +
-                ".eyJ1c2VyIjp7InBhc3N3b3JkIjoiMTIzNDU2IiwidXNlcm5hbWUiOiJhY2UifSwiZXhwIjoxNzM2MzMyMjg3fQ" +
-                ".Lj4EilcR8avMqqebzk8X12OP2M-KgiQ3ZO_RB51eca0";
+                ".eyJ1c2VyIjp7InBhc3N3b3JkIjoiMTIzNDU2IiwidXNlcm5hbWUiOiJhY2UifSwiZXhwIjoxNzQyNjMzMjIxfQ" +
+                ".R5Q_G6v8stgpdDWNVpAmvPZc237tAckGOUc5Atrd7DM";
         DecodedJWT decodedJWT = JWT.require(Algorithm.HMAC256("itniuma")) // 设置加密算法
                 .build()  // 创建验证对象
                 .verify(token); // 验证token
