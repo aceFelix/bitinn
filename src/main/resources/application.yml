@@ -1,18 +1,60 @@
 spring:
   application:
-    name: big-event
-  # 配置Redis
+    name: bitlnn
+  profiles:
+    active: local
   data:
     redis:
-      host: localhost
-      port: 6379
-  # 配置数据库
+      host: ${redis.host}
+      port: ${redis.port}
+      password: ${redis.password}
   datasource:
-    url: jdbc:mysql://localhost:3306/big_event
-    username: root
-    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-# 配置MyBatis驼峰命名转换
+    url: jdbc:mysql://${datasource.host}:${datasource.port}/${datasource.database}${datasource.path}
+    username: ${datasource.username}
+    password: ${datasource.password}
+  mail:
+    host: ${mail.host}
+    port: ${mail.port}
+    username: ${mail.username}
+    password: ${mail.password}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          ssl:
+            enable: true
+
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+
+website:
+  domain: ${website.domain}
+
+dromara:
+  x-file-storage:
+    default-platform: aliyun-oss-1
+    thumbnail-suffix: ".min.jpg"
+    aliyun-oss:
+      - platform: aliyun-oss-1
+        enable-storage: true
+        access-key: ${aliyun-oss.access-key}
+        secret-key: ${aliyun-oss.secret-key}
+        end-point: ${aliyun-oss.end-point}
+        bucket-name: ${aliyun-oss.bucket-name}
+        domain: ${aliyun-oss.domain}
+        base-path: ${aliyun-oss.base-path}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

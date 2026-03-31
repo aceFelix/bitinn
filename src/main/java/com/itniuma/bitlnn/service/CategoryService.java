@@ -1,0 +1,27 @@
+package com.itniuma.bitlnn.service;
+
+import com.itniuma.bitlnn.pojo.Category;
+
+import java.util.List;
+
+/**
+ * 分类接口
+ *
+ * @author aceFelix
+ */
+public interface CategoryService {
+    // 添加分类
+    void add(Category category);
+
+    // 查询所有分类
+    List<Category> list();
+
+    // 根据id查询分类详情
+    Category detail(Integer id);
+
+    // 修改分类
+    void update(Category category);
+
+    // 删除分类
+    void delete(Integer id);
+}
