@@ -18,131 +18,95 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ *
+ * @author aceFelix
+ */
 @RestController
 @RequestMapping("/user")
 @Validated
 public class UserController {
     @Autowired
     private UserService userService;
+
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
-    /**
-     * 注册
-     * @param username
-     * @param password
-     * @return Result
-     */
     @PostMapping("/register")
-    public Result register(@Pattern(regexp = "^\\S{3,15}$")String username, @Pattern(regexp = "^\\S{3,15}$")String password){
-        // 查询用户是否已注册
-        // 调用service层查询用户
+    public Result register(@Pattern(regexp = "^\\S{3,15}$") String username,
+                           @Pattern(regexp = "^\\S{3,15}$") String password) {
         User user = userService.findByUsername(username);
-        //用户存在，返回错误结果
-        if (user == null){
-            // 用户不存在，注册
-            // 调用service层注册
-            userService.register(username,password);
+        if (user == null) {
+            userService.register(username, password);
             return Result.success();
-        }else{
-            return Result.error("用户已存在");
         }
-
+        return Result.error("用户已存在");
     }
 
-    /**
-     * 登录
-     * @param username
-     * @param password
-     * @return Result
-     */
     @PostMapping("/login")
-    public Result login(@Pattern(regexp = "^\\S{3,15}$")String username, @Pattern(regexp = "^\\S{3,15}$")String password){
-        //查询用户是否存在
+    public Result login(@Pattern(regexp = "^\\S{3,15}$") String username,
+                        @Pattern(regexp = "^\\S{3,15}$") String password) {
         User user = userService.findByUsername(username);
-        //不存在，返回错误结果
-        if (user == null){
+        if (user == null) {
             return Result.error("用户不存在");
         }
-        // 存在，判断密码是否正确
-        if (Md5Util.getMD5String(password).equals(user.getPassword())){
-            // 密码正确，生成token
-            Map<String,Object> claims = new HashMap<>();
-            claims.put("id",user.getId());
-            claims.put("username",user.getUsername());
-            final String token = JwtUtil.genToken(claims);
-            // 把token存储到redis中
-            stringRedisTemplate.opsForValue().set(token,token,1, TimeUnit.HOURS);
+
+        if (Md5Util.getMD5String(password).equals(user.getPassword())) {
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("id", user.getId());
+            claims.put("username", user.getUsername());
+            String token = JwtUtil.genToken(claims);
+            stringRedisTemplate.opsForValue().set(token, token, 1, TimeUnit.HOURS);
             return Result.success(token);
         }
+
         return Result.error("密码错误");
     }
 
-    /**
-     * 获取用户信息
-     * @return user
-     */
-    @GetMapping("/userInfo")
-    public Result<User> userInfo(/*@RequestHeader(name = "Authorization") String token*/){
-        // 根据用户名查询用户
-        /*User user = userService.findByUsername(JwtUtil.parseToken(token).get("username").toString());*/
-        Map<String,Object> map = ThreadLocalUtil.get();
+    @GetMapping({"/userInfo", "/info"})
+    public Result<User> userInfo() {
+        Map<String, Object> map = ThreadLocalUtil.get();
         String username = (String) map.get("username");
         User user = userService.findByUsername(username);
         return Result.success(user);
     }
 
-    /**
-     * 修改用户信息
-     * @param user
-     * @return result
-     */
     @PutMapping("/update")
-    public Result update(@RequestBody @Validated User user){
+    public Result update(@RequestBody @Validated User user) {
         userService.update(user);
         return Result.success();
     }
 
-    /**
-     * 修改用户头像
-     * @param avatarUrl
-     * @return result
-     */
     @PatchMapping("/updateAvatar")
-    public Result updateAvatar(@RequestParam @URL String avatarUrl){
+    public Result updateAvatar(@RequestParam @URL String avatarUrl) {
         userService.updateAvatar(avatarUrl);
         return Result.success();
     }
 
-    /**
-     * 修改用户密码
-     * @param params
-     * @return result
-     */
     @PatchMapping("/updatePwd")
-    public Result updatePwd(@RequestBody Map<String,String> params, @RequestHeader(name = "Authorization") String token){
-        // 校验参数
+    public Result updatePwd(@RequestBody Map<String, String> params,
+                            @RequestHeader(name = "Authorization") String token) {
         String oldPwd = params.get("old_pwd");
         String newPwd = params.get("new_pwd");
         String rePwd = params.get("re_pwd");
-        if(!StringUtils.hasLength(oldPwd)||!StringUtils.hasLength(newPwd)||!StringUtils.hasLength(rePwd)){
+
+        if (!StringUtils.hasLength(oldPwd) || !StringUtils.hasLength(newPwd) || !StringUtils.hasLength(rePwd)) {
             return Result.error("参数错误");
         }
-        // 校验元密码是否正确
-        Map<String,Object> map = ThreadLocalUtil.get();
+
+        Map<String, Object> map = ThreadLocalUtil.get();
         String username = (String) map.get("username");
         User user = userService.findByUsername(username);
-        if(!Md5Util.getMD5String(oldPwd).equals(user.getPassword())){
+        if (!Md5Util.getMD5String(oldPwd).equals(user.getPassword())) {
             return Result.error("原密码错误");
         }
-        // newPwd和rePwd是否一致
-        if(!newPwd.equals(rePwd)){
+
+        if (!newPwd.equals(rePwd)) {
             return Result.error("两次密码不一致");
         }
-        // 调用service层完成密码更新
+
         userService.updatePwd(newPwd);
-        // 删除redis中的token
-        stringRedisTemplate.opsForValue().getOperations().delete(token);
+        stringRedisTemplate.delete(token);
         return Result.success();
     }
 }

@@ -1,6 +1,5 @@
 package com.itniuma.bigevent.interceptors;
 
-import com.itniuma.bigevent.pojo.Result;
 import com.itniuma.bigevent.utils.JwtUtil;
 import com.itniuma.bigevent.utils.ThreadLocalUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +11,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.Map;
 
+/**
+ *
+ * @author aceFelix
+ */
 @Component
 public class LoginInterceptor implements HandlerInterceptor {
     @Autowired

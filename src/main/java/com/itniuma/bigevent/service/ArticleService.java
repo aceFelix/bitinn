@@ -3,6 +3,10 @@ package com.itniuma.bigevent.service;
 import com.itniuma.bigevent.pojo.Article;
 import com.itniuma.bigevent.pojo.PageBean;
 
+/**
+ * 文章接口
+ * @author aceFelix
+ */
 public interface ArticleService {
     // 添加文章
     void add(Article article);

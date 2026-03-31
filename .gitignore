@@ -33,3 +33,4 @@ build/
 .vscode/
 
 applicationProfiles.yml
+application-loacl.yml

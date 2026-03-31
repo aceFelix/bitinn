@@ -6,11 +6,15 @@ import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import java.io.InputStream;
 
+/**
+ * 阿里云工具类
+ * @author aceFelix
+ */
 public class AliOssUtil {
     // Endpoint以华东1（杭州）为例，其它Region请按实际情况填写。
-    private static final String ENDPOINT = "https://oss-cn-hangzhou.aliyuncs.com";
+    private static final String ENDPOINT = "";
     // 填写Bucket名称，例如examplebucket。
-    private static final String BUCKET_NAME = "dashijian-itniuma";
+    private static final String BUCKET_NAME = "";
 
     public static String uploadFile(String objectName, InputStream inputStream) throws Exception {
         // 填写Object完整路径，完整路径中不能包含Bucket名称，例如exampledir/exampleobject.txt。

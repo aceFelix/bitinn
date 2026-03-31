@@ -4,6 +4,10 @@ import com.itniuma.bigevent.pojo.Category;
 
 import java.util.List;
 
+/**
+ * 分类接口
+ * @author aceFelix
+ */
 public interface CategoryService {
     // 添加分类
     void add(Category category);

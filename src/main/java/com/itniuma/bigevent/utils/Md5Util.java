@@ -4,6 +4,10 @@ package com.itniuma.bigevent.utils;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * MD5加密工具类
+ * @author aceFelix
+ */
 public class Md5Util {
     /**
      * 默认的密码字符串组合，用来将字节转换成 16 进制表示的字符,apache校验下载的文件的正确性用的就是默认的这个组合
@@ -63,9 +67,11 @@ public class Md5Util {
     }
 
     private static void appendHexPair(byte bt, StringBuffer stringbuffer) {
-        char c0 = hexDigits[(bt & 0xf0) >> 4];// 取字节中高 4 位的数字转换, >>>
+        // 取字节中高 4 位的数字转换, >>>
+        char c0 = hexDigits[(bt & 0xf0) >> 4];
         // 为逻辑右移，将符号位一起右移,此处未发现两种符号有何不同
-        char c1 = hexDigits[bt & 0xf];// 取字节中低 4 位的数字转换
+        // 取字节中低 4 位的数字转换
+        char c1 = hexDigits[bt & 0xf];
         stringbuffer.append(c0);
         stringbuffer.append(c1);
     }

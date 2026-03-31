@@ -1,31 +1,34 @@
 package com.itniuma.bigevent.mapper;
 
 import com.itniuma.bigevent.pojo.Category;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
+/**
+ * @author aceFelix
+ */
 @Mapper
 public interface CategoryMapper {
-    // 添加分类
     @Insert("insert into category(category_name,category_alias,create_user,create_time,update_time) " +
             "values(#{categoryName},#{categoryAlias},#{createUser},#{createTime},#{updateTime})")
     void add(Category category);
 
-    // 查询分类
     @Select("select * from category where create_user=#{id}")
     List<Category> list(Integer id);
 
-    // 根据id查询分类详情
-    @Select("select * from category where id=#{id}")
-    Category detail(Integer id);
+    @Select("select * from category where id=#{id} and create_user=#{userId}")
+    Category detail(@Param("id") Integer id, @Param("userId") Integer userId);
 
-    // 修改分类
     @Update("update category set category_name=#{categoryName},category_alias=#{categoryAlias}," +
-            "update_time=#{updateTime} where id=#{id}" )
-    void update(Category category);
+            "update_time=#{updateTime} where id=#{id} and create_user=#{createUser}")
+    int update(Category category);
 
-    // 删除分类
-    @Delete("delete from category where id=#{id}")
-    void delete(Integer id);
+    @Delete("delete from category where id=#{id} and create_user=#{userId}")
+    int delete(@Param("id") Integer id, @Param("userId") Integer userId);
 }

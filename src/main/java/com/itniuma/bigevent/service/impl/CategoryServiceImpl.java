@@ -11,48 +11,55 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 文章分类服务实现
+ * @author aceFelix
+ */
 @Service
 public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private CategoryMapper categoryMapper;
-    // 添加分类
+
+    private Integer getCurrentUserId() {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        return (Integer) claims.get("id");
+    }
+
     @Override
     public void add(Category category) {
-        // 补充属性
         category.setCreateTime(LocalDateTime.now());
         category.setUpdateTime(LocalDateTime.now());
-        Map<String, Object> claims = ThreadLocalUtil.get();
-        category.setCreateUser((Integer)(claims.get("id")));
+        category.setCreateUser(getCurrentUserId());
         categoryMapper.add(category);
     }
 
-    // 查询分类
     @Override
     public List<Category> list() {
-        // 查询当前用户所创建的所有分类
-        // 参数为当前用户的id
-        Map<String, Object> claims = ThreadLocalUtil.get();
-        Integer id = (Integer) claims.get("id");
-        return categoryMapper.list(id);
+        return categoryMapper.list(getCurrentUserId());
     }
 
-    // 根据id查询分类详情
     @Override
     public Category detail(Integer id) {
-        Category category = categoryMapper.detail(id);
+        Category category = categoryMapper.detail(id, getCurrentUserId());
+        if (category == null) {
+            throw new RuntimeException("分类不存在或无权限访问");
+        }
         return category;
     }
 
-    // 修改分类
     @Override
     public void update(Category category) {
+        category.setCreateUser(getCurrentUserId());
         category.setUpdateTime(LocalDateTime.now());
-        categoryMapper.update(category);
+        if (categoryMapper.update(category) == 0) {
+            throw new RuntimeException("分类不存在或无权限修改");
+        }
     }
 
-    // 删除分类
     @Override
     public void delete(Integer id) {
-        categoryMapper.delete(id);
+        if (categoryMapper.delete(id, getCurrentUserId()) == 0) {
+            throw new RuntimeException("分类不存在或无权限删除");
+        }
     }
 }

@@ -1,18 +1,76 @@
 spring:
   application:
     name: big-event
-  # 配置Redis
+  profiles:
+    active: local
+
+  # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
-  # 配置数据库
+      host: ${redis.host}
+      port: ${redis.port}
+      password: ${redis.password}
+
+  # 数据库配置
   datasource:
-    url: jdbc:mysql://localhost:3306/big_event
-    username: root
-    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-# 配置MyBatis驼峰命名转换
+    url: jdbc:mysql://${datasource.host}:${datasource.port}/${datasource.database}${datasource.path}
+    username: ${datasource.username}
+    password: ${datasource.password}
+
+  # 邮件服务配置
+  mail:
+    host: ${mail.host}
+    port: ${mail.port}
+    username: ${mail.username}
+    password: ${mail.password}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          # 创建SSL连接
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          ssl:
+            enable: true
+
+# MyBatis配置
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+
+# 前端站点域名
+website:
+  domain: ${website.domain}
+
+# x-file-storage集成阿里云OSS
+dromara:
+  #文件存储配置
+  x-file-storage:
+    #默认使用的存储平台
+    default-platform: aliyun-oss-1
+    thumbnail-suffix: ".min.jpg"
+    aliyun-oss:
+      # 存储平台标识
+      - platform: aliyun-oss-1
+        # 启用存储
+        enable-storage: true
+        access-key: ${aliyun-oss.access-key}
+        secret-key: ${aliyun-oss.secret-key}
+        end-point: ${aliyun-oss.end-point}
+        bucket-name: ${aliyun-oss.bucket-name}
+        # 访问域名，注意"/"结尾
+        domain: ${aliyun-oss.domain}
+        # 基础路径
+        base-path: ${aliyun-oss.base-path}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

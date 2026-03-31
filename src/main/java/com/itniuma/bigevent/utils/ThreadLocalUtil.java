@@ -1,10 +1,8 @@
 package com.itniuma.bigevent.utils;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * ThreadLocal 工具类
+ * @author aceFelix
  */
 @SuppressWarnings("all")
 public class ThreadLocalUtil {

@@ -1,21 +1,24 @@
 package com.itniuma.bigevent.pojo;
 
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-//统一响应结果
+/**
+ * 统一响应结果
+ * @author aceFelix
+ */
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class Result<T> {
-    private Integer code;//业务状态码  0-成功  1-失败
-    private String message;//提示信息
-    private T data;//响应数据
-    // 构造方法
-    public Result() {
-    }
-    public Result(Integer code, String message, T data) {
-        this.code = code;
-        this.message = message;
-        this.data = data;
-    }
+    //业务状态码  0-成功  1-失败
+    private Integer code;
+    //提示信息
+    private String message;
+    //响应数据
+    private T data;
 
     //快速返回操作成功响应结果(带响应数据)
     public static <E> Result<E> success(E data) {
@@ -30,60 +33,5 @@ public class Result<T> {
     public static Result<Void> error(String message) {
         return new Result(1, message, null);
     }
-
-
-    /**
-     * 获取
-     * @return code
-     */
-    public Integer getCode() {
-        return code;
-    }
-
-    /**
-     * 设置
-     * @param code
-     */
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    /**
-     * 获取
-     * @return message
-     */
-    public String getMessage() {
-        return message;
-    }
-
-    /**
-     * 设置
-     * @param message
-     */
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    /**
-     * 获取
-     * @return data
-     */
-    public T getData() {
-        return data;
-    }
-
-    /**
-     * 设置
-     * @param data
-     */
-    public void setData(T data) {
-        this.data = data;
-    }
-
-    @Override
-    public String toString() {
-        return "Result{code = " + code + ", message = " + message + ", data = " + data + "}";
-    }
-
 
 }

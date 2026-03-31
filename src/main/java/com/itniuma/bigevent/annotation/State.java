@@ -3,17 +3,19 @@ package com.itniuma.bigevent.annotation;
 import com.itniuma.bigevent.validation.StateValidation;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-
 import java.lang.annotation.*;
 
 /**
- * @author 许发明
- *
+ * @author aceFelix
  */
-@Documented //  表示该注解应该被包含在文档中
-@Target(ElementType.FIELD) //  表示该注解应该被应用到字段上
-@Retention(RetentionPolicy.RUNTIME) //  表示该注解应该被保留到运行时
-@Constraint(validatedBy = {StateValidation.class}) // 指定验证器
+// 表示该注解应该被包含在文档中
+@Documented
+// 表示该注解应该被应用到字段上
+@Target(ElementType.FIELD)
+// 表示该注解应该被保留到运行时
+@Retention(RetentionPolicy.RUNTIME)
+// 指定验证器
+@Constraint(validatedBy = {StateValidation.class})
 public @interface State {
     // message: 表示验证失败时返回的错误消息
     String message() default "state的值只能是已发布或者草稿";
