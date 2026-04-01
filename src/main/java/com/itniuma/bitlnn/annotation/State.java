@@ -3,7 +3,6 @@ package com.itniuma.bitlnn.annotation;
 import com.itniuma.bitlnn.validation.StateValidation;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-
 import java.lang.annotation.*;
 
 /**
