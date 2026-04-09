@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itniuma.bitinn.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.itniuma.bitinn.pojo.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="nickname" property="nickname"/>
+        <result column="email" property="email"/>
+        <result column="user_pic" property="userPic"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, password, nickname, email, user_pic, create_time, update_time
+    </sql>
+
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE username = #{username}
+    </select>
+
+    <select id="findByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE email = #{email}
+    </select>
+
+    <insert id="insert" parameterType="com.itniuma.bitinn.pojo.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (username, password, nickname, email, user_pic, create_time, update_time)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{userPic}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.itniuma.bitinn.pojo.User">
+        UPDATE user
+        <set>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="userPic != null">user_pic = #{userPic},</if>
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAvatar">
+        UPDATE user
+        SET user_pic = #{userPic}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE user
+        SET password = #{password}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

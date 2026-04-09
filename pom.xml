@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.itniuma</groupId>
-    <artifactId>bitlnn</artifactId>
+    <artifactId>bitinn</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>bitlnn</name>
-    <description>bitlnn</description>
+    <name>bitinn</name>
+    <description>bitinn</description>
 
     <properties>
         <java.version>17</java.version>
