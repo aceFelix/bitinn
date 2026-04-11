@@ -1,0 +1,2 @@
+-- 文章封面字段扩容（原 VARCHAR(128) 存不下图片URL）
+ALTER TABLE article MODIFY COLUMN cover_img VARCHAR(512) NOT NULL DEFAULT '';

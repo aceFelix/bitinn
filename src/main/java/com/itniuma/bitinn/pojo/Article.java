@@ -1,54 +1,54 @@
 package com.itniuma.bitinn.pojo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.itniuma.bitinn.annotation.State;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.groups.Default;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 文章实体类
- *
- * @author aceFelix
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Article {
-    @NotNull(groups = Update.class)
     private Integer id;
 
-    @NotEmpty
-    @Pattern(regexp = "^\\S{1,15}$")
+    @Size(max = 100)
     private String title;
 
-    @NotEmpty
     private String content;
 
-    @NotEmpty
-    @URL
     private String coverImg;
+
+    private String excerpt;
 
     @State
     private String state;
 
-    @NotNull
     private Integer categoryId;
 
     private Integer createUser;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 
     private List<Integer> tagIds;
-
     private List<Tag> tags;
+
+    private Integer viewCount;
+    private Integer likeCount;
+    private Integer commentCount;
+    private Integer favoriteCount;
+
+    private String authorName;
+    private String authorAvatar;
+
+    private String categoryName;
 
     public interface Add extends Default {
     }

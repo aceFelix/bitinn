@@ -1,6 +1,7 @@
 package com.itniuma.bitinn.service.impl;
 
 import com.itniuma.bitinn.service.TagService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
  *
  * @author aceFelix
  */
+@Slf4j
 @Service
 public class TagServiceImpl implements TagService {
 

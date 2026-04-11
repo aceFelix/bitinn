@@ -15,7 +15,7 @@ public class FileUploadController {
         this.fileStorageService = fileStorageService;
     }
 
-    @PostMapping("/upload")
+    @PostMapping("/api/upload")
     public Result<String> upload(MultipartFile file) {
         String url = fileStorageService.of(file).upload().getUrl();
         return Result.success(url);

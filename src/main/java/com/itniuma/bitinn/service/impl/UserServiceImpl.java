@@ -1,5 +1,7 @@
 package com.itniuma.bitinn.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itniuma.bitinn.mapper.UserMapper;
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.User;
@@ -16,24 +18,31 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String REGISTER_LOCK_PREFIX = "register:lock:";
     private static final String LOGIN_FAIL_PREFIX = "login:fail:";
     private static final String REGISTER_IDEMPOTENT_PREFIX = "register:idempotent:";
+    private static final String USER_CACHE_PREFIX = "user:info:";
     private static final int MAX_LOGIN_FAIL_COUNT = 5;
     private static final int LOCK_EXPIRE_SECONDS = 10;
     private static final int LOGIN_FAIL_EXPIRE_MINUTES = 30;
+    private static final int USER_CACHE_HOURS = 2;
 
-    public UserServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, StringRedisTemplate stringRedisTemplate) {
+    public UserServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -119,6 +128,8 @@ public class UserServiceImpl implements UserService {
 
         stringRedisTemplate.opsForValue().set(token, token, 12, TimeUnit.HOURS);
 
+        cacheUser(user);
+
         return Result.success(token, "登录成功");
     }
 
@@ -131,17 +142,52 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    private void cacheUser(User user) {
+        try {
+            String cacheKey = USER_CACHE_PREFIX + user.getUsername();
+            user.setPassword(null);
+            String userJson = objectMapper.writeValueAsString(user);
+            stringRedisTemplate.opsForValue().set(cacheKey, userJson, USER_CACHE_HOURS, TimeUnit.HOURS);
+        } catch (JsonProcessingException e) {
+            System.err.println("缓存用户信息失败: " + e.getMessage());
+        }
+    }
+
+    private User getCachedUser(String username) {
+        try {
+            String cacheKey = USER_CACHE_PREFIX + username;
+            String userJson = stringRedisTemplate.opsForValue().get(cacheKey);
+            if (userJson != null) {
+                return objectMapper.readValue(userJson, User.class);
+            }
+        } catch (JsonProcessingException e) {
+            System.err.println("读取用户缓存失败: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private void invalidateUserCache(String username) {
+        String cacheKey = USER_CACHE_PREFIX + username;
+        stringRedisTemplate.delete(cacheKey);
+    }
+
     @Override
     public Result<User> getUserInfo() {
         Map<String, Object> claims = ThreadLocalUtil.get();
-        Integer userId = (Integer) claims.get("id");
+        String username = (String) claims.get("username");
 
-        User user = userMapper.findByUsername((String) claims.get("username"));
+        User user = getCachedUser(username);
+        if (user != null) {
+            return Result.success(user);
+        }
+
+        user = userMapper.findByUsername(username);
         if (user == null) {
             return Result.error("用户不存在");
         }
 
         user.setPassword(null);
+        cacheUser(user);
 
         return Result.success(user);
     }
@@ -150,11 +196,13 @@ public class UserServiceImpl implements UserService {
     public Result updateUserInfo(User user) {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Integer userId = (Integer) claims.get("id");
+        String username = (String) claims.get("username");
 
         user.setId(userId);
         user.setUpdateTime(LocalDateTime.now());
 
         userMapper.update(user);
+        invalidateUserCache(username);
 
         return Result.success(null, "更新成功");
     }
@@ -163,8 +211,10 @@ public class UserServiceImpl implements UserService {
     public Result updateAvatar(String avatarUrl) {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Integer userId = (Integer) claims.get("id");
+        String username = (String) claims.get("username");
 
         userMapper.updateAvatar(userId, avatarUrl);
+        invalidateUserCache(username);
 
         return Result.success(null, "头像更新成功");
     }
@@ -190,6 +240,7 @@ public class UserServiceImpl implements UserService {
 
         String encodedPassword = passwordEncoder.encode(newPwd);
         userMapper.updatePassword(userId, encodedPassword);
+        invalidateUserCache(username);
 
         return Result.success(null, "密码修改成功");
     }

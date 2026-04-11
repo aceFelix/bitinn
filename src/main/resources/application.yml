@@ -13,6 +13,13 @@ spring:
     url: jdbc:mysql://${datasource.host}:${datasource.port}/${datasource.database}${datasource.path}
     username: ${datasource.username}
     password: ${datasource.password}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
   mail:
     host: ${mail.host}
     port: ${mail.port}
@@ -28,6 +35,15 @@ spring:
             class: javax.net.ssl.SSLSocketFactory
           ssl:
             enable: true
+  messages:
+    encoding: UTF-8
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 mybatis:
   configuration:

@@ -1,10 +1,11 @@
 package com.itniuma.bitinn.service;
 
-/**
- * 分类接口
- *
- * @author aceFelix
- */
+import com.itniuma.bitinn.pojo.Category;
+import com.itniuma.bitinn.pojo.Result;
+
+import java.util.List;
+
 public interface CategoryService {
 
+    Result<List<Category>> list();
 }
