@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.itniuma.bitinn.mapper.ArticleMapper">
+<mapper namespace="com.itniuma.bitinn.mapper.article.ArticleMapper">
 
     <resultMap id="articleResultMap" type="com.itniuma.bitinn.pojo.Article">
         <id property="id" column="id"/>
@@ -22,6 +22,7 @@
         <result property="authorName" column="author_name"/>
         <result property="authorAvatar" column="author_avatar"/>
         <result property="categoryName" column="category_name"/>
+        <result property="hotScore" column="hot_score"/>
     </resultMap>
 
     <resultMap id="articleWithTagResultMap" type="com.itniuma.bitinn.pojo.Article" extends="articleResultMap">
@@ -85,7 +86,7 @@
     </select>
 
     <select id="listWithAuthor" resultMap="articleWithTagResultMap">
-        SELECT a.id, a.title, a.content, a.cover_img, a.excerpt, a.state, a.category_id,
+        SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
                a.create_user, a.create_time, a.update_time,
                a.view_count, a.like_count, a.comment_count, a.favorite_count,
                u.nickname AS author_name,
@@ -139,5 +140,58 @@
     <delete id="deleteArticleTagsByArticleId">
         DELETE FROM article_tag WHERE article_id = #{articleId}
     </delete>
+
+    <select id="listFeed" resultMap="articleWithTagResultMap">
+        SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
+               a.create_user, a.create_time, a.update_time,
+               a.view_count, a.like_count, a.comment_count, a.favorite_count,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name,
+               t.id AS tag_id, t.tag_name AS tag_name, t.tag_color AS tag_color
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+                 LEFT JOIN article_tag at ON a.id = at.article_id
+                 LEFT JOIN tag t ON at.tag_id = t.id
+        WHERE a.state = #{state}
+        <choose>
+            <when test="sortType == 'recommend'">
+                ORDER BY a.hot_score DESC, a.create_time DESC
+            </when>
+            <when test="sortType == 'hot'">
+                ORDER BY a.like_count * 2 + a.favorite_count * 3 + a.comment_count * 1.5 DESC, a.create_time DESC
+            </when>
+            <otherwise>
+                ORDER BY a.create_time DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countFeed" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM article a WHERE a.state = #{state}
+    </select>
+
+    <update id="recalculateHotScores">
+        UPDATE article
+        SET hot_score = (like_count * 2 + favorite_count * 3 + comment_count * 1.5)
+                        / POWER(TIMESTAMPDIFF(HOUR, create_time, NOW()) + 2, 1.5)
+        WHERE state = '已发布'
+    </update>
+
+    <select id="findByIds" resultMap="articleResultMap">
+        SELECT a.*,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+        WHERE a.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
 
 </mapper>

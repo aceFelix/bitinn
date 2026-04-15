@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.service;
+package com.itniuma.bitinn.service.article;
 
 import com.itniuma.bitinn.pojo.Article;
 import com.itniuma.bitinn.pojo.PageBean;
@@ -17,4 +17,6 @@ public interface ArticleService {
     Result<PageBean<Article>> list(Integer categoryId, String state, Integer pageNum, Integer pageSize);
 
     Result<PageBean<Article>> myArticles(String state, Integer pageNum, Integer pageSize);
+
+    Result<PageBean<Article>> feed(String sortType, Integer pageNum, Integer pageSize);
 }

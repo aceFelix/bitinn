@@ -18,26 +18,38 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class User {
-    //主键ID
+    // 主键ID
     @NotNull
     private Integer id;
-    //用户名
+    // 用户名
     private String username;
-    //密码
+    // 密码
     @JsonIgnore
     private String password;
-    //昵称
+    // 昵称
     @NotNull
     @Pattern(regexp = "^\\S{1,10}$")
     private String nickname;
-    //邮箱
+    // 邮箱
     @NotNull
     @Email
     private String email;
-    //用户头像地址
+    // 用户头像地址
     private String userPic;
-    //创建时间
+    // 用户简介
+    private String bio;
+    // 手机号
+    private String phone;
+    // 角色: user/admin
+    private String role;
+    // 账号状态: active/banned
+    private String status;
+    // 最后登录时间
+    private LocalDateTime lastLoginTime;
+    // 最后登录IP
+    private String lastLoginIp;
+    // 创建时间
     private LocalDateTime createTime;
-    //更新时间
+    // 更新时间
     private LocalDateTime updateTime;
 }

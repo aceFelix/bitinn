@@ -3,6 +3,7 @@ package com.itniuma.bitinn.config;
 import com.itniuma.bitinn.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -33,10 +34,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/user/**",
+                                "/api/user/register",
+                                "/api/user/login",
+                                "/api/user/info",
                                 "/api/article",
                                 "/api/article/",
                                 "/api/article/my",
+                                "/api/article/feed",
+                                "/api/article/**",
                                 "/api/category/**",
                                 "/api/tag/**",
                                 "/api/upload",
@@ -47,6 +52,8 @@ public class SecurityConfig {
                                 "/actuator/**",
                                 "/error"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/user/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/interaction/comment/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

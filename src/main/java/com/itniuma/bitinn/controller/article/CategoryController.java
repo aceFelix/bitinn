@@ -1,8 +1,8 @@
-package com.itniuma.bitinn.controller;
+package com.itniuma.bitinn.controller.article;
 
 import com.itniuma.bitinn.pojo.Category;
 import com.itniuma.bitinn.pojo.Result;
-import com.itniuma.bitinn.service.CategoryService;
+import com.itniuma.bitinn.service.article.CategoryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

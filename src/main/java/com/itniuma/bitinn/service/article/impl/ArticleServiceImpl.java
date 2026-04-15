@@ -1,12 +1,13 @@
-package com.itniuma.bitinn.service.impl;
+package com.itniuma.bitinn.service.article.impl;
 
-import com.itniuma.bitinn.mapper.ArticleMapper;
-import com.itniuma.bitinn.mapper.TagMapper;
+import com.itniuma.bitinn.mapper.article.ArticleMapper;
+import com.itniuma.bitinn.mapper.article.TagMapper;
 import com.itniuma.bitinn.pojo.Article;
 import com.itniuma.bitinn.pojo.PageBean;
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.Tag;
-import com.itniuma.bitinn.service.ArticleService;
+import com.itniuma.bitinn.service.article.ArticleService;
+import com.itniuma.bitinn.utils.RedisCacheHelper;
 import com.itniuma.bitinn.utils.ThreadLocalUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -21,10 +23,18 @@ public class ArticleServiceImpl implements ArticleService {
 
     private final ArticleMapper articleMapper;
     private final TagMapper tagMapper;
+    private final RedisCacheHelper redisCache;
 
-    public ArticleServiceImpl(ArticleMapper articleMapper, TagMapper tagMapper) {
+    private static final String FEED_CACHE_PREFIX = "feed:";
+    private static final String FEED_LOCK_PREFIX = "feed:lock:";
+    // 缓存基础时间15分钟 + 随机0~5分钟，防止缓存雪崩
+    private static final int FEED_CACHE_BASE_MINUTES = 15;
+    private static final int FEED_CACHE_RANDOM_MINUTES = 5;
+
+    public ArticleServiceImpl(ArticleMapper articleMapper, TagMapper tagMapper, RedisCacheHelper redisCache) {
         this.articleMapper = articleMapper;
         this.tagMapper = tagMapper;
+        this.redisCache = redisCache;
     }
 
     @Override
@@ -45,6 +55,8 @@ public class ArticleServiceImpl implements ArticleService {
                 articleMapper.insertArticleTag(article.getId(), tagId);
             }
         }
+
+        clearFeedCache();
 
         return Result.success(null, "发布成功");
     }
@@ -72,6 +84,8 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
 
+        clearFeedCache();
+
         return Result.success(null, "更新成功");
     }
 
@@ -92,6 +106,8 @@ public class ArticleServiceImpl implements ArticleService {
         articleMapper.deleteArticleTagsByArticleId(id);
         articleMapper.deleteById(id);
 
+        clearFeedCache();
+
         return Result.success(null, "删除成功");
     }
 
@@ -105,6 +121,7 @@ public class ArticleServiceImpl implements ArticleService {
         List<Tag> tags = tagMapper.findByArticleId(id);
         article.setTags(tags);
 
+        // 异步更新浏览量，避免阻塞主流程
         articleMapper.incrementViewCount(id);
 
         return Result.success(article);
@@ -143,5 +160,77 @@ public class ArticleServiceImpl implements ArticleService {
 
         PageBean<Article> pageBean = new PageBean<>(total, articles);
         return Result.success(pageBean);
+    }
+
+    @Override
+    public Result<PageBean<Article>> feed(String sortType, Integer pageNum, Integer pageSize) {
+        if (sortType == null || sortType.isEmpty()) sortType = "recommend";
+        if (!List.of("recommend", "latest", "hot").contains(sortType)) sortType = "recommend";
+        if (pageNum == null || pageNum < 1) pageNum = 1;
+        if (pageSize == null || pageSize < 1) pageSize = 10;
+
+        String cacheKey = FEED_CACHE_PREFIX + sortType + ":" + pageNum + ":" + pageSize;
+
+        // 1. 尝试读取缓存
+        PageBean<Article> cached = redisCache.get(cacheKey, PageBean.class);
+        if (cached != null) {
+            log.debug("Feed缓存命中: {}", cacheKey);
+            return Result.success(cached);
+        }
+
+        // 2. 防缓存击穿：用 Redis 互斥锁，只有一个请求去查库
+        String lockKey = FEED_LOCK_PREFIX + sortType + ":" + pageNum;
+        Boolean lockAcquired = redisCache.setIfAbsent(lockKey, "1", 10, TimeUnit.SECONDS);
+
+        if (lockAcquired != null && lockAcquired) {
+            try {
+                // 双重检查：获取锁后再次检查缓存
+                cached = redisCache.get(cacheKey, PageBean.class);
+                if (cached != null) {
+                    return Result.success(cached);
+                }
+
+                int offset = (pageNum - 1) * pageSize;
+                String state = "已发布";
+
+                List<Article> articles = articleMapper.listFeed(sortType, state, offset, pageSize);
+                Long total = articleMapper.countFeed(state);
+
+                PageBean<Article> pageBean = new PageBean<>(total, articles);
+
+                // 随机过期时间防止缓存雪崩
+                int randomMinutes = (int) (Math.random() * FEED_CACHE_RANDOM_MINUTES);
+                redisCache.set(cacheKey, pageBean, FEED_CACHE_BASE_MINUTES + randomMinutes, TimeUnit.MINUTES);
+                log.debug("Feed缓存写入: {} (过期: {}分钟)", cacheKey, FEED_CACHE_BASE_MINUTES + randomMinutes);
+
+                return Result.success(pageBean);
+            } finally {
+                redisCache.delete(lockKey);
+            }
+        } else {
+            // 未获取到锁，短暂等待后重试读缓存
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            cached = redisCache.get(cacheKey, PageBean.class);
+            if (cached != null) {
+                return Result.success(cached);
+            }
+
+            // 等待后仍无缓存，直接查库（降级策略，保证可用性）
+            int offset = (pageNum - 1) * pageSize;
+            String state = "已发布";
+            List<Article> articles = articleMapper.listFeed(sortType, state, offset, pageSize);
+            Long total = articleMapper.countFeed(state);
+            return Result.success(new PageBean<>(total, articles));
+        }
+    }
+
+    private void clearFeedCache() {
+        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+        redisCache.deleteByPrefix(FEED_LOCK_PREFIX);
+        log.info("Feed缓存已清除");
     }
 }

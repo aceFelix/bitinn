@@ -1,205 +1,70 @@
-create schema bitlnn;
+-- 在 bitinn 数据库中执行
+USE bitinn;
 
-create table if not exists user
-(
-    id
-    int
-    unsigned
-    auto_increment
-    comment
-    'ID'
-    primary
-    key,
-    username
-    varchar
-(
-    20
-) not null comment '用户名',
-    password varchar
-(
-    255
-) null comment '密码',
-    nickname varchar
-(
-    10
-) default '' null comment '昵称',
-    email varchar
-(
-    128
-) default '' null comment '邮箱',
-    user_pic varchar
-(
-    128
-) default '' null comment '头像',
-    create_time datetime not null comment '创建时间',
-    update_time datetime not null comment '修改时间',
-    constraint username
-    unique
-(
-    username
-)
-    )
-    comment '用户表';
+-- 创建用户表
+CREATE TABLE IF NOT EXISTS user (
+                                    id INT UNSIGNED AUTO_INCREMENT COMMENT 'ID' PRIMARY KEY,
+                                    username VARCHAR(20) NOT NULL COMMENT '用户名',
+                                    password VARCHAR(255) NULL COMMENT '密码',
+                                    nickname VARCHAR(10) DEFAULT '' NULL COMMENT '昵称',
+                                    email VARCHAR(128) DEFAULT '' NULL COMMENT '邮箱',
+                                    user_pic VARCHAR(128) DEFAULT '' NULL COMMENT '头像',
+                                    create_time DATETIME NOT NULL COMMENT '创建时间',
+                                    update_time DATETIME NOT NULL COMMENT '修改时间',
+                                    UNIQUE KEY username (username)
+) COMMENT '用户表';
 
-create table if not exists category
-(
-    id
-    int
-    unsigned
-    auto_increment
-    comment
-    'ID'
-    primary
-    key,
-    category_name
-    varchar
-(
-    32
-) not null comment '分类名称',
-    category_alias varchar
-(
-    32
-) not null comment '分类别名',
-    create_user int unsigned not null comment '创建人ID',
-    create_time datetime not null comment '创建时间',
-    update_time datetime not null comment '修改时间',
-    constraint fk_category_user
-    foreign key
-(
-    create_user
-) references user
-(
-    id
-)
-    );
+-- 创建分类表
+CREATE TABLE IF NOT EXISTS category (
+                                        id INT UNSIGNED AUTO_INCREMENT COMMENT 'ID' PRIMARY KEY,
+                                        category_name VARCHAR(32) NOT NULL COMMENT '分类名称',
+                                        category_alias VARCHAR(32) NOT NULL COMMENT '分类别名',
+                                        create_user INT UNSIGNED NOT NULL COMMENT '创建人ID',
+                                        create_time DATETIME NOT NULL COMMENT '创建时间',
+                                        update_time DATETIME NOT NULL COMMENT '修改时间',
+                                        CONSTRAINT fk_category_user FOREIGN KEY (create_user) REFERENCES user(id)
+);
 
-create table if not exists article
-(
-    id
-    int
-    unsigned
-    auto_increment
-    comment
-    'ID'
-    primary
-    key,
-    title
-    varchar
-(
-    30
-) not null comment '文章标题',
-    content varchar
-(
-    10000
-) not null comment '文章内容',
-    cover_img varchar
-(
-    128
-) not null comment '文章封面',
-    state varchar
-(
-    3
-) default '草稿' null comment '文章状态: 只能是[已发布] 或者 [草稿]',
-    category_id int unsigned null comment '文章分类ID',
-    create_user int unsigned not null comment '创建人ID',
-    create_time datetime not null comment '创建时间',
-    update_time datetime not null comment '修改时间',
-    constraint fk_article_category
-    foreign key
-(
-    category_id
-) references category
-(
-    id
-),
-    constraint fk_article_user
-    foreign key
-(
-    create_user
-) references user
-(
-    id
-)
-    );
+-- 创建文章表
+CREATE TABLE IF NOT EXISTS article (
+                                       id INT UNSIGNED AUTO_INCREMENT COMMENT 'ID' PRIMARY KEY,
+                                       title VARCHAR(30) NOT NULL COMMENT '文章标题',
+                                       content VARCHAR(10000) NOT NULL COMMENT '文章内容',
+                                       cover_img VARCHAR(128) NOT NULL COMMENT '文章封面',
+                                       state VARCHAR(3) DEFAULT '草稿' NULL COMMENT '文章状态',
+                                       category_id INT UNSIGNED NULL COMMENT '文章分类ID',
+                                       create_user INT UNSIGNED NOT NULL COMMENT '创建人ID',
+                                       create_time DATETIME NOT NULL COMMENT '创建时间',
+                                       update_time DATETIME NOT NULL COMMENT '修改时间',
+                                       CONSTRAINT fk_article_category FOREIGN KEY (category_id) REFERENCES category(id),
+                                       CONSTRAINT fk_article_user FOREIGN KEY (create_user) REFERENCES user(id)
+);
 
-create table if not exists tag
-(
-    id
-    int
-    unsigned
-    auto_increment
-    comment
-    'ID'
-    primary
-    key,
-    tag_name
-    varchar
-(
-    32
-) not null comment '标签名称',
-    tag_color varchar
-(
-    16
-) default '#409EFF' null comment '标签颜色',
-    create_user int unsigned not null comment '创建人ID',
-    create_time datetime not null comment '创建时间',
-    update_time datetime not null comment '修改时间',
-    constraint uk_tag_name
-    unique
-(
-    tag_name
-)
-    )
-    comment '标签表';
+-- 创建标签表
+CREATE TABLE IF NOT EXISTS tag (
+                                   id INT UNSIGNED AUTO_INCREMENT COMMENT 'ID' PRIMARY KEY,
+                                   tag_name VARCHAR(32) NOT NULL COMMENT '标签名称',
+                                   tag_color VARCHAR(16) DEFAULT '#409EFF' NULL COMMENT '标签颜色',
+                                   create_user INT UNSIGNED NOT NULL COMMENT '创建人ID',
+                                   create_time DATETIME NOT NULL COMMENT '创建时间',
+                                   update_time DATETIME NOT NULL COMMENT '修改时间',
+                                   UNIQUE KEY uk_tag_name (tag_name)
+) COMMENT '标签表';
 
-create table if not exists article_tag
-(
-    id
-    int
-    unsigned
-    auto_increment
-    comment
-    'ID'
-    primary
-    key,
-    article_id
-    int
-    unsigned
-    not
-    null
-    comment
-    '文章ID',
-    tag_id
-    int
-    unsigned
-    not
-    null
-    comment
-    '标签ID',
-    create_time datetime not null comment '创建时间',
-    constraint fk_article_tag_article
-    foreign key
-(
-    article_id
-) references article
-(
-    id
-) on delete cascade,
-    constraint fk_article_tag_tag
-    foreign key
-(
-    tag_id
-) references tag
-(
-    id
-) on delete cascade,
-    constraint uk_article_tag
-    unique
-(
-    article_id,
-    tag_id
-)
-    )
-    comment '文章标签关联表';
+-- 创建文章标签关联表
+CREATE TABLE IF NOT EXISTS article_tag (
+                                           id INT UNSIGNED AUTO_INCREMENT COMMENT 'ID' PRIMARY KEY,
+                                           article_id INT UNSIGNED NOT NULL COMMENT '文章ID',
+                                           tag_id INT UNSIGNED NOT NULL COMMENT '标签ID',
+                                           create_time DATETIME NOT NULL COMMENT '创建时间',
+                                           CONSTRAINT fk_article_tag_article FOREIGN KEY (article_id) REFERENCES article(id) ON DELETE CASCADE,
+                                           CONSTRAINT fk_article_tag_tag FOREIGN KEY (tag_id) REFERENCES tag(id) ON DELETE CASCADE,
+                                           UNIQUE KEY uk_article_tag (article_id, tag_id)
+) COMMENT '文章标签关联表';
 
-ALTER TABLE user MODIFY COLUMN password VARCHAR(255) NULL COMMENT '密码';
+
+-- 手动执行或在 MySQL 中运行
+ALTER TABLE user ADD UNIQUE INDEX uk_username (username);
+ALTER TABLE user ADD UNIQUE INDEX uk_email (email);
+
+CREATE INDEX idx_article_user_state_time ON article(create_user, state, create_time DESC);

@@ -1,6 +1,6 @@
-package com.itniuma.bitinn.controller;
+package com.itniuma.bitinn.controller.article;
 
-import com.itniuma.bitinn.mapper.TagMapper;
+import com.itniuma.bitinn.mapper.article.TagMapper;
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.Tag;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,9 +1,9 @@
-package com.itniuma.bitinn.controller;
+package com.itniuma.bitinn.controller.article;
 
 import com.itniuma.bitinn.pojo.Article;
 import com.itniuma.bitinn.pojo.PageBean;
 import com.itniuma.bitinn.pojo.Result;
-import com.itniuma.bitinn.service.ArticleService;
+import com.itniuma.bitinn.service.article.ArticleService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -60,5 +60,13 @@ public class ArticleController {
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
         return articleService.myArticles(state, pageNum, pageSize);
+    }
+
+    @GetMapping("/feed")
+    public Result<PageBean<Article>> feed(
+            @RequestParam(required = false, defaultValue = "recommend") String sortType,
+            @RequestParam(required = false, defaultValue = "1") Integer pageNum,
+            @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
+        return articleService.feed(sortType, pageNum, pageSize);
     }
 }

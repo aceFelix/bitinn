@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.service;
+package com.itniuma.bitinn.service.user;
 
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.User;
@@ -16,4 +16,6 @@ public interface UserService {
     Result updateAvatar(String avatarUrl);
 
     Result updatePassword(String oldPwd, String newPwd, String rePwd);
+
+    Result<User> getUserById(Integer id);
 }

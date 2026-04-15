@@ -1,8 +1,8 @@
-package com.itniuma.bitinn.controller;
+package com.itniuma.bitinn.controller.user;
 
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.User;
-import com.itniuma.bitinn.service.UserService;
+import com.itniuma.bitinn.service.user.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -59,5 +59,10 @@ public class UserController {
             @Pattern(regexp = "^\\S{6,20}$", message = "确认密码格式不正确") @NotBlank String rePwd
     ) {
         return userService.updatePassword(oldPwd, newPwd, rePwd);
+    }
+
+    @GetMapping("/{id}")
+    public Result<User> getUserById(@PathVariable Integer id) {
+        return userService.getUserById(id);
     }
 }

@@ -1,9 +1,9 @@
-package com.itniuma.bitinn.service.impl;
+package com.itniuma.bitinn.service.article.impl;
 
-import com.itniuma.bitinn.mapper.CategoryMapper;
+import com.itniuma.bitinn.mapper.article.CategoryMapper;
 import com.itniuma.bitinn.pojo.Category;
 import com.itniuma.bitinn.pojo.Result;
-import com.itniuma.bitinn.service.CategoryService;
+import com.itniuma.bitinn.service.article.CategoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

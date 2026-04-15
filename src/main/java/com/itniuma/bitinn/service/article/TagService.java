@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.service;
+package com.itniuma.bitinn.service.article;
 
 /**
  * 标签服务接口

@@ -50,6 +50,8 @@ public class Article {
 
     private String categoryName;
 
+    private Double hotScore;
+
     public interface Add extends Default {
     }
 

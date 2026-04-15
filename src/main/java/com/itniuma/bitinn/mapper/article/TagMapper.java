@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.mapper;
+package com.itniuma.bitinn.mapper.article;
 
 import com.itniuma.bitinn.pojo.Tag;
 import org.apache.ibatis.annotations.Mapper;

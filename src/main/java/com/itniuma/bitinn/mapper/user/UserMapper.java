@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.mapper;
+package com.itniuma.bitinn.mapper.user;
 
 import com.itniuma.bitinn.pojo.User;
 import org.apache.ibatis.annotations.Mapper;
@@ -18,4 +18,6 @@ public interface UserMapper {
     void updateAvatar(@Param("id") Integer id, @Param("userPic") String userPic);
 
     void updatePassword(@Param("id") Integer id, @Param("password") String password);
+
+    User findById(@Param("id") Integer id);
 }

@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.mapper;
+package com.itniuma.bitinn.mapper.article;
 
 import com.itniuma.bitinn.pojo.Article;
 import org.apache.ibatis.annotations.Mapper;
@@ -27,6 +27,13 @@ public interface ArticleMapper {
                                  @Param("offset") int offset,
                                  @Param("pageSize") int pageSize);
 
+    List<Article> listFeed(@Param("sortType") String sortType,
+                           @Param("state") String state,
+                           @Param("offset") int offset,
+                           @Param("pageSize") int pageSize);
+
+    Long countFeed(@Param("state") String state);
+
     Long countList(@Param("categoryId") Integer categoryId,
                    @Param("state") String state,
                    @Param("userId") Integer userId);
@@ -36,4 +43,8 @@ public interface ArticleMapper {
     void insertArticleTag(@Param("articleId") Integer articleId, @Param("tagId") Integer tagId);
 
     void deleteArticleTagsByArticleId(Integer articleId);
+
+    void recalculateHotScores();
+
+    List<Article> findByIds(@Param("ids") List<Integer> ids);
 }

@@ -1,6 +1,6 @@
-package com.itniuma.bitinn.service.impl;
+package com.itniuma.bitinn.service.article.impl;
 
-import com.itniuma.bitinn.service.TagService;
+import com.itniuma.bitinn.service.article.TagService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package com.itniuma.bitinn.controller;
+package com.itniuma.bitinn.controller.article;
 
 import com.itniuma.bitinn.pojo.Result;
 import org.dromara.x.file.storage.core.FileStorageService;

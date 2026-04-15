@@ -66,3 +66,5 @@ CREATE TABLE IF NOT EXISTS article_tag (
 -- 手动执行或在 MySQL 中运行
 ALTER TABLE user ADD UNIQUE INDEX uk_username (username);
 ALTER TABLE user ADD UNIQUE INDEX uk_email (email);
+
+CREATE INDEX idx_article_user_state_time ON article(create_user, state, create_time DESC);
