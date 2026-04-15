@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itniuma.bitinn.mapper.interaction.CommentMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (article_id, user_id, content, parent_id, create_time, update_time)
+        VALUES (#{articleId}, #{userId}, #{content}, #{parentId}, NOW(), NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM comment WHERE id = #{id}
+    </delete>
+
+    <resultMap id="commentResultMap" type="com.itniuma.bitinn.pojo.Comment">
+        <id property="id" column="id"/>
+        <result property="articleId" column="article_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="content" column="content"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="username" column="username"/>
+        <result property="userPic" column="user_pic"/>
+        <result property="nickname" column="nickname"/>
+    </resultMap>
+
+    <select id="findByArticleId" resultMap="commentResultMap">
+        SELECT c.id, c.article_id, c.user_id, c.content, c.parent_id,
+               c.create_time, c.update_time,
+               u.username, u.user_pic, u.nickname
+        FROM comment c
+                 LEFT JOIN user u ON c.user_id = u.id
+        WHERE c.article_id = #{articleId}
+        ORDER BY c.create_time ASC
+    </select>
+
+    <select id="countByArticleId" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM comment WHERE article_id = #{articleId}
+    </select>
+
+    <select id="findById" resultMap="commentResultMap">
+        SELECT c.id, c.article_id, c.user_id, c.content, c.parent_id,
+               c.create_time, c.update_time,
+               u.username, u.user_pic, u.nickname
+        FROM comment c
+                 LEFT JOIN user u ON c.user_id = u.id
+        WHERE c.id = #{id}
+    </select>
+
+</mapper>
