@@ -9,7 +9,12 @@ spring:
       port: ${redis.port}
       password: ${redis.password}
     mongodb:
-      uri: ${mongodb.uri:mongodb://localhost:27017/bitinn}
+      uri: mongodb://${mongodb.username}:${mongodb.password}@${mongodb.host}:${mongodb.port}/${mongodb.database}
+    elasticsearch:
+      repositories:
+        enabled: true
+  elasticsearch:
+    uris: ${elasticsearch.uris}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${datasource.host}:${datasource.port}/${datasource.database}${datasource.path}
@@ -42,10 +47,11 @@ spring:
   ai:
     vectorstore:
       redis:
-        initialize-schema: true
+        initialize-schema: false
         index-name: bitinn-article-index
         prefix: "article:vec:"
     dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
       embedding:
         options:
           model: "qwen3-vl-embedding"
@@ -65,6 +71,13 @@ mybatis:
   mapper-locations: classpath:com/itniuma/bitinn/mapper/*Mapper.xml
   configuration:
     map-underscore-to-camel-case: true
+
+rabbitmq:
+  exchanges:
+    data-sync: bitinn.data.sync
+  queues:
+    article-count-sync: bitinn.article.count.sync
+    es-sync: bitinn.es.sync
 
 website:
   domain: ${website.domain}

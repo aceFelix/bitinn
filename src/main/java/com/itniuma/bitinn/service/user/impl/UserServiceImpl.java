@@ -3,11 +3,14 @@ package com.itniuma.bitinn.service.user.impl;
 import com.itniuma.bitinn.mapper.user.UserMapper;
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.User;
+import com.itniuma.bitinn.service.mq.DataSyncProducer;
+import com.itniuma.bitinn.service.search.ArticleDataSyncService;
 import com.itniuma.bitinn.service.user.UserService;
 import com.itniuma.bitinn.utils.JwtUtil;
 import com.itniuma.bitinn.utils.RedisCacheHelper;
 import com.itniuma.bitinn.utils.ThreadLocalUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,10 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final RedisCacheHelper redisCache;
+    private final DataSyncProducer dataSyncProducer;
+
+    @Autowired(required = false)
+    private ArticleDataSyncService dataSyncService;
 
     private static final String REGISTER_LOCK_PREFIX = "register:lock:";
     private static final String LOGIN_FAIL_PREFIX = "login:fail:";
@@ -35,10 +42,11 @@ public class UserServiceImpl implements UserService {
     private static final int LOGIN_FAIL_EXPIRE_MINUTES = 30;
     private static final int USER_CACHE_HOURS = 2;
 
-    public UserServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, RedisCacheHelper redisCache) {
+    public UserServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, RedisCacheHelper redisCache, DataSyncProducer dataSyncProducer) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.redisCache = redisCache;
+        this.dataSyncProducer = dataSyncProducer;
     }
 
     @Override
@@ -193,6 +201,11 @@ public class UserServiceImpl implements UserService {
         userMapper.update(user);
         invalidateUserCache(username);
 
+        // 同步 ES 冗余字段（昵称变更）
+        if (dataSyncService != null && user.getNickname() != null) {
+            dataSyncService.updateUserFields(userId, user.getNickname(), null);
+        }
+
         return Result.success(null, "更新成功");
     }
 
@@ -204,6 +217,11 @@ public class UserServiceImpl implements UserService {
 
         userMapper.updateAvatar(userId, avatarUrl);
         invalidateUserCache(username);
+
+        // 同步 ES 冗余字段（头像变更）
+        if (dataSyncService != null) {
+            dataSyncService.updateUserFields(userId, null, avatarUrl);
+        }
 
         return Result.success(null, "头像更新成功");
     }

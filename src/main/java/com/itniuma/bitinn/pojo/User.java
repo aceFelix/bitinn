@@ -1,6 +1,8 @@
 package com.itniuma.bitinn.pojo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.itniuma.bitinn.enums.UserRole;
+import com.itniuma.bitinn.enums.UserStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -40,10 +42,10 @@ public class User {
     private String bio;
     // 手机号
     private String phone;
-    // 角色: user/admin
-    private String role;
-    // 账号状态: active/banned
-    private String status;
+    // 角色
+    private UserRole role;
+    // 账号状态
+    private UserStatus status;
     // 最后登录时间
     private LocalDateTime lastLoginTime;
     // 最后登录IP

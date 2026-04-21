@@ -2,14 +2,20 @@ package com.itniuma.bitinn.service.article.impl;
 
 import com.itniuma.bitinn.mapper.article.ArticleMapper;
 import com.itniuma.bitinn.mapper.article.TagMapper;
+import com.itniuma.bitinn.mapper.interaction.CommentMapper;
 import com.itniuma.bitinn.pojo.Article;
 import com.itniuma.bitinn.pojo.PageBean;
 import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.pojo.Tag;
 import com.itniuma.bitinn.service.article.ArticleService;
+import com.itniuma.bitinn.service.cache.FeedCacheService;
+import com.itniuma.bitinn.service.interaction.InteractionCounterService;
+import com.itniuma.bitinn.service.mq.DataSyncProducer;
+import com.itniuma.bitinn.service.search.ArticleDataSyncService;
 import com.itniuma.bitinn.utils.RedisCacheHelper;
 import com.itniuma.bitinn.utils.ThreadLocalUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +30,27 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleMapper articleMapper;
     private final TagMapper tagMapper;
     private final RedisCacheHelper redisCache;
+    private final InteractionCounterService counterService;
+    private final CommentMapper commentMapper;
+    private final DataSyncProducer dataSyncProducer;
+    private final FeedCacheService feedCacheService;
+    @Autowired(required = false)
+    private ArticleDataSyncService dataSyncService;
 
-    private static final String FEED_CACHE_PREFIX = "feed:";
-    private static final String FEED_LOCK_PREFIX = "feed:lock:";
-    // 缓存基础时间15分钟 + 随机0~5分钟，防止缓存雪崩
-    private static final int FEED_CACHE_BASE_MINUTES = 15;
-    private static final int FEED_CACHE_RANDOM_MINUTES = 5;
-
-    public ArticleServiceImpl(ArticleMapper articleMapper, TagMapper tagMapper, RedisCacheHelper redisCache) {
+    public ArticleServiceImpl(ArticleMapper articleMapper,
+                              TagMapper tagMapper,
+                              RedisCacheHelper redisCache,
+                              InteractionCounterService counterService,
+                              CommentMapper commentMapper,
+                              DataSyncProducer dataSyncProducer,
+                              FeedCacheService feedCacheService) {
         this.articleMapper = articleMapper;
         this.tagMapper = tagMapper;
         this.redisCache = redisCache;
+        this.counterService = counterService;
+        this.commentMapper = commentMapper;
+        this.dataSyncProducer = dataSyncProducer;
+        this.feedCacheService = feedCacheService;
     }
 
     @Override
@@ -48,6 +64,18 @@ public class ArticleServiceImpl implements ArticleService {
             article.setState("已发布");
         }
 
+        String coverImg = article.getCoverImg();
+        log.info("[发布文章] 原始coverImg: '{}', 长度: {}", coverImg, coverImg != null ? coverImg.length() : 0);
+        if (coverImg != null && !coverImg.isEmpty()) {
+            if (!isValidImageUrl(coverImg)) {
+                log.warn("[发布文章] coverImg格式无效，已清空: '{}'", coverImg);
+                article.setCoverImg("");
+            }
+        } else {
+            article.setCoverImg("");
+        }
+        log.info("[发布文章] 最终coverImg: '{}'", article.getCoverImg());
+
         articleMapper.insert(article);
 
         if (article.getTagIds() != null && !article.getTagIds().isEmpty()) {
@@ -57,6 +85,11 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         clearFeedCache();
+
+        Article saved = articleMapper.findById(article.getId());
+        if (saved != null) {
+            dataSyncProducer.sendEsSync(article.getId(), "sync");
+        }
 
         return Result.success(null, "发布成功");
     }
@@ -75,6 +108,15 @@ public class ArticleServiceImpl implements ArticleService {
             return Result.error("无权修改此文章");
         }
 
+        String coverImg = article.getCoverImg();
+        if (coverImg != null && !coverImg.isEmpty()) {
+            if (!isValidImageUrl(coverImg)) {
+                article.setCoverImg("");
+            }
+        } else {
+            article.setCoverImg("");
+        }
+
         articleMapper.update(article);
 
         articleMapper.deleteArticleTagsByArticleId(article.getId());
@@ -85,6 +127,11 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         clearFeedCache();
+
+        Article updated = articleMapper.findById(article.getId());
+        if (updated != null) {
+            dataSyncProducer.sendEsSync(article.getId(), "sync");
+        }
 
         return Result.success(null, "更新成功");
     }
@@ -107,6 +154,7 @@ public class ArticleServiceImpl implements ArticleService {
         articleMapper.deleteById(id);
 
         clearFeedCache();
+        dataSyncProducer.sendEsSync(id, "delete");
 
         return Result.success(null, "删除成功");
     }
@@ -169,7 +217,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
 
-        String cacheKey = FEED_CACHE_PREFIX + sortType + ":" + pageNum + ":" + pageSize;
+        String cacheKey = feedCacheService.buildCacheKey(sortType, pageNum, pageSize);
 
         // 1. 尝试读取缓存
         PageBean<Article> cached = redisCache.get(cacheKey, PageBean.class);
@@ -179,7 +227,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         // 2. 防缓存击穿：用 Redis 互斥锁，只有一个请求去查库
-        String lockKey = FEED_LOCK_PREFIX + sortType + ":" + pageNum;
+        String lockKey = feedCacheService.buildLockKey(sortType, pageNum);
         Boolean lockAcquired = redisCache.setIfAbsent(lockKey, "1", 10, TimeUnit.SECONDS);
 
         if (lockAcquired != null && lockAcquired) {
@@ -196,12 +244,28 @@ public class ArticleServiceImpl implements ArticleService {
                 List<Article> articles = articleMapper.listFeed(sortType, state, offset, pageSize);
                 Long total = articleMapper.countFeed(state);
 
+                // 从 Redis 获取实时计数（null 表示缓存不存在，使用 MySQL 值）
+                for (Article article : articles) {
+                    int articleId = article.getId();
+                    Long likeVal = counterService.getLikeCount(articleId);
+                    article.setLikeCount(likeVal != null ? likeVal.intValue() : article.getLikeCount());
+
+                    Long favVal = counterService.getFavoriteCount(articleId);
+                    article.setFavoriteCount(favVal != null ? favVal.intValue() : article.getFavoriteCount());
+
+                    Long comVal = counterService.getCommentCount(articleId);
+                    article.setCommentCount(comVal != null ? comVal.intValue() : article.getCommentCount());
+
+                    Long shareVal = counterService.getShareCount(articleId);
+                    article.setShareCount(shareVal != null ? shareVal.intValue() : article.getShareCount());
+                }
+
                 PageBean<Article> pageBean = new PageBean<>(total, articles);
 
                 // 随机过期时间防止缓存雪崩
-                int randomMinutes = (int) (Math.random() * FEED_CACHE_RANDOM_MINUTES);
-                redisCache.set(cacheKey, pageBean, FEED_CACHE_BASE_MINUTES + randomMinutes, TimeUnit.MINUTES);
-                log.debug("Feed缓存写入: {} (过期: {}分钟)", cacheKey, FEED_CACHE_BASE_MINUTES + randomMinutes);
+                int ttlMinutes = feedCacheService.getCacheTTLMinutes();
+                redisCache.set(cacheKey, pageBean, ttlMinutes, TimeUnit.MINUTES);
+                log.debug("Feed缓存写入: {} (过期: {}分钟)", cacheKey, ttlMinutes);
 
                 return Result.success(pageBean);
             } finally {
@@ -224,13 +288,43 @@ public class ArticleServiceImpl implements ArticleService {
             String state = "已发布";
             List<Article> articles = articleMapper.listFeed(sortType, state, offset, pageSize);
             Long total = articleMapper.countFeed(state);
+
+            // 从 Redis 获取实时计数（降级时也要保证数据准确性）
+            for (Article article : articles) {
+                int articleId = article.getId();
+                Long likeVal = counterService.getLikeCount(articleId);
+                article.setLikeCount(likeVal != null ? likeVal.intValue() : article.getLikeCount());
+
+                Long favVal = counterService.getFavoriteCount(articleId);
+                article.setFavoriteCount(favVal != null ? favVal.intValue() : article.getFavoriteCount());
+
+                Long comVal = counterService.getCommentCount(articleId);
+                article.setCommentCount(comVal != null ? comVal.intValue() : article.getCommentCount());
+
+                Long shareVal = counterService.getShareCount(articleId);
+                article.setShareCount(shareVal != null ? shareVal.intValue() : article.getShareCount());
+            }
+            
             return Result.success(new PageBean<>(total, articles));
         }
     }
 
     private void clearFeedCache() {
-        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
-        redisCache.deleteByPrefix(FEED_LOCK_PREFIX);
-        log.info("Feed缓存已清除");
+        // 版本化失效：只需递增版本号，旧缓存自然过期
+        feedCacheService.incrementVersion();
+        log.info("Feed缓存版本号已递增");
+    }
+
+    private boolean isValidImageUrl(String url) {
+        if (url == null || url.trim().isEmpty()) return false;
+        url = url.trim();
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url.contains(".") && url.matches(".*\\.(jpg|jpeg|png|gif|webp|svg|bmp)(\\?.*)?$")
+                    || url.contains("aliyuncs.com") || url.contains("oss-");
+        }
+        if (url.startsWith("/")) {
+            return url.matches(".+\\.(jpg|jpeg|png|gif|webp|svg|bmp)(\\?.*)?$");
+        }
+        return false;
     }
 }

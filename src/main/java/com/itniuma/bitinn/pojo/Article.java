@@ -44,6 +44,7 @@ public class Article {
     private Integer likeCount;
     private Integer commentCount;
     private Integer favoriteCount;
+    private Integer shareCount;
 
     private String authorName;
     private String authorAvatar;

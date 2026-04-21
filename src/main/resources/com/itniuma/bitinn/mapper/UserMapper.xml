@@ -9,12 +9,18 @@
         <result column="nickname" property="nickname"/>
         <result column="email" property="email"/>
         <result column="user_pic" property="userPic"/>
+        <result column="bio" property="bio"/>
+        <result column="phone" property="phone"/>
+        <result column="role" property="role" typeHandler="com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserRoleTypeHandler"/>
+        <result column="status" property="status" typeHandler="com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserStatusTypeHandler"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="last_login_ip" property="lastLoginIp"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, username, password, nickname, email, user_pic, create_time, update_time
+        id, username, password, nickname, email, user_pic, bio, phone, role, status, last_login_time, last_login_ip, create_time, update_time
     </sql>
 
     <select id="findByUsername" resultMap="BaseResultMap">
@@ -30,8 +36,11 @@
     </select>
 
     <insert id="insert" parameterType="com.itniuma.bitinn.pojo.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (username, password, nickname, email, user_pic, create_time, update_time)
-        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{userPic}, #{createTime}, #{updateTime})
+        INSERT INTO user (username, password, nickname, email, user_pic, bio, phone, role, status, last_login_time, last_login_ip, create_time, update_time)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{userPic}, #{bio}, #{phone},
+                #{role, typeHandler=com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserRoleTypeHandler},
+                #{status, typeHandler=com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserStatusTypeHandler},
+                #{lastLoginTime}, #{lastLoginIp}, #{createTime}, #{updateTime})
     </insert>
 
     <update id="update" parameterType="com.itniuma.bitinn.pojo.User">
@@ -40,6 +49,10 @@
             <if test="nickname != null">nickname = #{nickname},</if>
             <if test="email != null">email = #{email},</if>
             <if test="userPic != null">user_pic = #{userPic},</if>
+            <if test="bio != null">bio = #{bio},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="role != null">role = #{role, typeHandler=com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserRoleTypeHandler},</if>
+            <if test="status != null">status = #{status, typeHandler=com.itniuma.bitinn.config.MyBatisTypeHandlerConfig$UserStatusTypeHandler},</if>
             update_time = #{updateTime}
         </set>
         WHERE id = #{id}

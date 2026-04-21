@@ -7,10 +7,14 @@ import com.itniuma.bitinn.mapper.interaction.CommentMapper;
 import com.itniuma.bitinn.mapper.interaction.UserFollowMapper;
 import com.itniuma.bitinn.mapper.user.UserMapper;
 import com.itniuma.bitinn.pojo.*;
+import com.itniuma.bitinn.service.cache.FeedCacheService;
+import com.itniuma.bitinn.service.mq.DataSyncProducer;
 import com.itniuma.bitinn.service.notification.NotificationService;
+import com.itniuma.bitinn.service.search.ArticleDataSyncService;
 import com.itniuma.bitinn.utils.RedisCacheHelper;
 import com.itniuma.bitinn.utils.ThreadLocalUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +34,11 @@ public class InteractionService {
     private final InteractionCounterService counterService;
     private final RedisCacheHelper redisCache;
     private final NotificationService notificationService;
+    private final DataSyncProducer dataSyncProducer;
+    private final FeedCacheService feedCacheService;
 
-    private static final String FEED_CACHE_PREFIX = "feed:";
+    @Autowired(required = false)
+    private ArticleDataSyncService dataSyncService;
 
     public InteractionService(ArticleLikeMapper likeMapper,
                               ArticleFavoriteMapper favoriteMapper,
@@ -41,7 +48,9 @@ public class InteractionService {
                               UserMapper userMapper,
                               InteractionCounterService counterService,
                               RedisCacheHelper redisCache,
-                              NotificationService notificationService) {
+                              NotificationService notificationService,
+                              DataSyncProducer dataSyncProducer,
+                              FeedCacheService feedCacheService) {
         this.likeMapper = likeMapper;
         this.favoriteMapper = favoriteMapper;
         this.followMapper = followMapper;
@@ -51,6 +60,8 @@ public class InteractionService {
         this.counterService = counterService;
         this.redisCache = redisCache;
         this.notificationService = notificationService;
+        this.dataSyncProducer = dataSyncProducer;
+        this.feedCacheService = feedCacheService;
     }
 
     @Transactional
@@ -88,7 +99,8 @@ public class InteractionService {
             );
         }
 
-        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+        feedCacheService.incrementVersion();
+        syncArticleCountsToEs(articleId);
         return Result.success(liked, liked ? "点赞成功" : "取消点赞成功");
     }
 
@@ -133,7 +145,8 @@ public class InteractionService {
             );
         }
 
-        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+        feedCacheService.incrementVersion();
+        syncArticleCountsToEs(articleId);
         return Result.success(favorited, favorited ? "收藏成功" : "取消收藏成功");
     }
 
@@ -208,7 +221,8 @@ public class InteractionService {
 
         commentMapper.insert(comment);
         counterService.incrementCommentCount(comment.getArticleId());
-        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+        feedCacheService.incrementVersion();
+        syncArticleCountsToEs(comment.getArticleId());
 
         log.info("用户{}评论文章{}", userId, comment.getArticleId());
 
@@ -261,7 +275,8 @@ public class InteractionService {
 
         commentMapper.delete(commentId);
         counterService.decrementCommentCount(comment.getArticleId());
-        redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+        feedCacheService.incrementVersion();
+        syncArticleCountsToEs(comment.getArticleId());
 
         log.info("用户{}删除评论{}", userId, commentId);
         return Result.success(null, "删除成功");
@@ -281,9 +296,12 @@ public class InteractionService {
         // 批量查询文章，避免 N+1 问题
         List<Article> articles = articleMapper.findByIds(articleIds);
         articles.forEach(a -> {
-            a.setLikeCount(counterService.getLikeCount(a.getId()).intValue());
-            a.setFavoriteCount(counterService.getFavoriteCount(a.getId()).intValue());
-            a.setCommentCount(counterService.getCommentCount(a.getId()).intValue());
+            Long likeVal = counterService.getLikeCount(a.getId());
+            a.setLikeCount(likeVal != null ? likeVal.intValue() : a.getLikeCount());
+            Long favVal = counterService.getFavoriteCount(a.getId());
+            a.setFavoriteCount(favVal != null ? favVal.intValue() : a.getFavoriteCount());
+            Long comVal = counterService.getCommentCount(a.getId());
+            a.setCommentCount(comVal != null ? comVal.intValue() : a.getCommentCount());
         });
         return Result.success(articles);
     }
@@ -297,9 +315,12 @@ public class InteractionService {
         // 批量查询文章，避免 N+1 问题
         List<Article> articles = articleMapper.findByIds(articleIds);
         articles.forEach(a -> {
-            a.setLikeCount(counterService.getLikeCount(a.getId()).intValue());
-            a.setFavoriteCount(counterService.getFavoriteCount(a.getId()).intValue());
-            a.setCommentCount(counterService.getCommentCount(a.getId()).intValue());
+            Long likeVal = counterService.getLikeCount(a.getId());
+            a.setLikeCount(likeVal != null ? likeVal.intValue() : a.getLikeCount());
+            Long favVal = counterService.getFavoriteCount(a.getId());
+            a.setFavoriteCount(favVal != null ? favVal.intValue() : a.getFavoriteCount());
+            Long comVal = counterService.getCommentCount(a.getId());
+            a.setCommentCount(comVal != null ? comVal.intValue() : a.getCommentCount());
         });
         return Result.success(articles);
     }
@@ -329,7 +350,7 @@ public class InteractionService {
                     userInfo.put("nickname", user.getNickname());
                     userInfo.put("username", user.getUsername());
                     userInfo.put("avatar", user.getUserPic());
-                    userInfo.put("followerCount", counterService.getFollowerCount(uid));
+                    userInfo.put("followerCount", counterService.getFollowerCount(uid) != null ? counterService.getFollowerCount(uid) : 0);
                     return userInfo;
                 })
                 .filter(u -> u != null)
@@ -341,18 +362,73 @@ public class InteractionService {
         Integer userId = getCurrentUserId();
         boolean liked = likeMapper.findByArticleAndUser(articleId, userId) != null;
         boolean favorited = favoriteMapper.findByArticleAndUser(articleId, userId) != null;
-        long likeCount = counterService.getLikeCount(articleId);
-        long favoriteCount = counterService.getFavoriteCount(articleId);
-        long commentCount = counterService.getCommentCount(articleId);
+
+        // 使用 EXISTS 判断：null 表示缓存不存在，需从 MySQL 初始化
+        Long likeCountVal = counterService.getLikeCount(articleId);
+        long likeCount;
+        if (likeCountVal != null) {
+            likeCount = likeCountVal;
+        } else {
+            Article article = articleMapper.findById(articleId);
+            likeCount = article != null && article.getLikeCount() != null ? article.getLikeCount() : 0;
+            counterService.initArticleCounts(articleId, likeCount,
+                    article != null && article.getFavoriteCount() != null ? article.getFavoriteCount() : 0,
+                    article != null && article.getCommentCount() != null ? article.getCommentCount() : 0,
+                    article != null && article.getShareCount() != null ? article.getShareCount() : 0);
+        }
+
+        Long favoriteCountVal = counterService.getFavoriteCount(articleId);
+        long favoriteCount = favoriteCountVal != null ? favoriteCountVal : 0;
+
+        Long commentCountVal = counterService.getCommentCount(articleId);
+        long commentCount;
+        if (commentCountVal != null) {
+            commentCount = commentCountVal;
+        } else {
+            Long dbCount = commentMapper.countByArticleId(articleId);
+            commentCount = dbCount != null ? dbCount : 0;
+        }
+
+        Long shareCountVal = counterService.getShareCount(articleId);
+        long shareCount = shareCountVal != null ? shareCountVal : 0;
 
         Map<String, Object> status = Map.of(
                 "liked", liked,
                 "favorited", favorited,
                 "likeCount", likeCount,
                 "favoriteCount", favoriteCount,
-                "commentCount", commentCount
+                "commentCount", commentCount,
+                "shareCount", shareCount
         );
         return Result.success(status);
+    }
+
+    public Result getBatchArticleInteractionStatus(List<Integer> articleIds) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return Result.success(Map.of());
+        }
+        Integer userId = getCurrentUserId();
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        for (Integer articleId : articleIds) {
+            boolean liked = likeMapper.findByArticleAndUser(articleId, userId) != null;
+            boolean favorited = favoriteMapper.findByArticleAndUser(articleId, userId) != null;
+            result.put(String.valueOf(articleId), Map.of("liked", liked, "favorited", favorited));
+        }
+        return Result.success(result);
+    }
+
+    @Transactional
+    public Result shareArticle(Integer articleId) {
+        Article article = articleMapper.findById(articleId);
+        if (article == null) {
+            return Result.error("文章不存在");
+        }
+
+        counterService.incrementShareCount(articleId);
+        feedCacheService.incrementVersion();
+
+        log.info("文章{}被转发", articleId);
+        return Result.success(null, "转发成功");
     }
 
     private Integer getCurrentUserId() {
@@ -367,5 +443,15 @@ public class InteractionService {
         if (str == null) return "";
         if (str.length() <= maxLength) return str;
         return str.substring(0, maxLength) + "...";
+    }
+
+    private void syncArticleCountsToEs(Integer articleId) {
+        if (articleId == null) return;
+        try {
+            // 通过 MQ 异步同步，保证跨存储最终一致性
+            dataSyncProducer.sendArticleCountSync(articleId, "update");
+        } catch (Exception e) {
+            log.warn("[ES同步] 发送计数同步消息失败: articleId={}", articleId, e);
+        }
     }
 }

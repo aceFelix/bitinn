@@ -47,4 +47,10 @@ public interface ArticleMapper {
     void recalculateHotScores();
 
     List<Article> findByIds(@Param("ids") List<Integer> ids);
+
+    void updateCounts(@Param("id") Integer id,
+                      @Param("likeCount") int likeCount,
+                      @Param("favoriteCount") int favoriteCount,
+                      @Param("commentCount") int commentCount,
+                      @Param("shareCount") int shareCount);
 }

@@ -45,6 +45,8 @@ public class SecurityConfig {
                                 "/api/category/**",
                                 "/api/tag/**",
                                 "/api/upload",
+                                "/api/oss/**",
+                                "/api/search/**",
                                 "/api/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",

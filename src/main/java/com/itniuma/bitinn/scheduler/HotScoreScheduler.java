@@ -1,7 +1,7 @@
 package com.itniuma.bitinn.scheduler;
 
 import com.itniuma.bitinn.mapper.article.ArticleMapper;
-import com.itniuma.bitinn.utils.RedisCacheHelper;
+import com.itniuma.bitinn.service.cache.FeedCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,9 +17,7 @@ import org.springframework.stereotype.Component;
 public class HotScoreScheduler {
 
     private final ArticleMapper articleMapper;
-    private final RedisCacheHelper redisCache;
-
-    private static final String FEED_CACHE_PREFIX = "feed:";
+    private final FeedCacheService feedCacheService;
 
     /**
      * 每10分钟刷新一次热分值
@@ -32,8 +30,8 @@ public class HotScoreScheduler {
             long elapsed = System.currentTimeMillis() - start;
             log.info("热分值刷新完成，耗时: {}ms", elapsed);
 
-            // 刷新后清除 Feed 缓存，确保下次请求获取最新排序
-            redisCache.deleteByPrefix(FEED_CACHE_PREFIX);
+            // 版本化失效 Feed 缓存
+            feedCacheService.incrementVersion();
         } catch (Exception e) {
             log.error("热分值刷新失败", e);
         }

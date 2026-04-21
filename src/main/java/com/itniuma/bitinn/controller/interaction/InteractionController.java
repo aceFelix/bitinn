@@ -5,6 +5,8 @@ import com.itniuma.bitinn.pojo.Result;
 import com.itniuma.bitinn.service.interaction.InteractionService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/interaction")
 public class InteractionController {
@@ -78,5 +80,15 @@ public class InteractionController {
     @GetMapping("/article-status/{articleId}")
     public Result getArticleInteractionStatus(@PathVariable Integer articleId) {
         return interactionService.getArticleInteractionStatus(articleId);
+    }
+
+    @PostMapping("/batch-status")
+    public Result getBatchArticleInteractionStatus(@RequestBody List<Integer> articleIds) {
+        return interactionService.getBatchArticleInteractionStatus(articleIds);
+    }
+
+    @PostMapping("/share/{articleId}")
+    public Result shareArticle(@PathVariable Integer articleId) {
+        return interactionService.shareArticle(articleId);
     }
 }

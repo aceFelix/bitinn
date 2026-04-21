@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -114,5 +115,167 @@ public class RedisCacheHelper {
             log.warn("Redis decrement失败: key={}", key);
             return null;
         }
+    }
+
+    public Double zIncrementScore(String key, String member, double delta) {
+        try {
+            return redisTemplate.opsForZSet().incrementScore(key, member, delta);
+        } catch (Exception e) {
+            log.warn("Redis ZINCRBY失败: key={}", key);
+            return null;
+        }
+    }
+
+    public Set<String> zReverseRange(String key, long start, long end) {
+        try {
+            return redisTemplate.opsForZSet().reverseRange(key, start, end);
+        } catch (Exception e) {
+            log.warn("Redis ZREVRANGE失败: key={}", key);
+            return new HashSet<>();
+        }
+    }
+
+    public Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> zReverseRangeWithScore(String key, long start, long end) {
+        try {
+            return redisTemplate.opsForZSet().reverseRangeWithScores(key, start, end);
+        } catch (Exception e) {
+            log.warn("Redis ZREVRANGEWITHSCORES失败: key={}", key);
+            return new HashSet<>();
+        }
+    }
+
+    public Long zCard(String key) {
+        try {
+            return redisTemplate.opsForZSet().zCard(key);
+        } catch (Exception e) {
+            log.warn("Redis ZCARD失败: key={}", key);
+            return 0L;
+        }
+    }
+
+    public Boolean expire(String key, long timeout, TimeUnit unit) {
+        try {
+            return redisTemplate.expire(key, timeout, unit);
+        } catch (Exception e) {
+            log.warn("Redis EXPIRE失败: key={}", key);
+            return false;
+        }
+    }
+
+    // ==================== Hash 操作 ====================
+
+    /**
+     * 判断 key 是否存在
+     */
+    public Boolean exists(String key) {
+        try {
+            return redisTemplate.hasKey(key);
+        } catch (Exception e) {
+            log.warn("Redis EXISTS失败: key={}", key);
+            return false;
+        }
+    }
+
+    /**
+     * Hash: 获取字段值
+     */
+    public String hGet(String key, String field) {
+        try {
+            return redisTemplate.opsForHash().get(key, field) != null
+                    ? redisTemplate.opsForHash().get(key, field).toString() : null;
+        } catch (Exception e) {
+            log.warn("Redis HGET失败: key={}, field={}", key, field);
+            return null;
+        }
+    }
+
+    /**
+     * Hash: 设置字段值
+     */
+    public void hPut(String key, String field, String value) {
+        try {
+            redisTemplate.opsForHash().put(key, field, value);
+        } catch (Exception e) {
+            log.warn("Redis HPUT失败: key={}, field={}", key, field);
+        }
+    }
+
+    /**
+     * Hash: 自增字段值
+     */
+    public Long hIncrement(String key, String field, long delta) {
+        try {
+            return redisTemplate.opsForHash().increment(key, field, delta);
+        } catch (Exception e) {
+            log.warn("Redis HINCRBY失败: key={}, field={}", key, field);
+            return null;
+        }
+    }
+
+    /**
+     * Hash: 判断字段是否存在
+     */
+    public Boolean hExists(String key, String field) {
+        try {
+            return redisTemplate.opsForHash().hasKey(key, field);
+        } catch (Exception e) {
+            log.warn("Redis HEXISTS失败: key={}, field={}", key, field);
+            return false;
+        }
+    }
+
+    /**
+     * Hash: 获取所有字段和值
+     */
+    public Map<Object, Object> hGetAll(String key) {
+        try {
+            return redisTemplate.opsForHash().entries(key);
+        } catch (Exception e) {
+            log.warn("Redis HGETALL失败: key={}", key);
+            return Map.of();
+        }
+    }
+
+    /**
+     * Hash: 批量设置字段
+     */
+    public void hPutAll(String key, Map<String, String> map) {
+        try {
+            redisTemplate.opsForHash().putAll(key, map);
+        } catch (Exception e) {
+            log.warn("Redis HMSET失败: key={}", key);
+        }
+    }
+
+    /**
+     * Hash: 删除字段
+     */
+    public Long hDelete(String key, String... fields) {
+        try {
+            return redisTemplate.opsForHash().delete(key, (Object[]) fields);
+        } catch (Exception e) {
+            log.warn("Redis HDEL失败: key={}", key);
+            return 0L;
+        }
+    }
+
+    /**
+     * 使用 SCAN 命令扫描匹配的 key（替代 KEYS）
+     */
+    public java.util.List<String> scanKeys(String pattern) {
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        try {
+            org.springframework.data.redis.core.Cursor<String> cursor = redisTemplate.scan(
+                    org.springframework.data.redis.core.ScanOptions.scanOptions()
+                            .match(pattern)
+                            .count(100)
+                            .build()
+            );
+            cursor.forEachRemaining(keys::add);
+            cursor.close();
+        } catch (Exception e) {
+            log.warn("Redis SCAN失败: pattern={}", pattern);
+        }
+        return keys;
     }
 }

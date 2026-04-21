@@ -19,6 +19,7 @@
         <result property="likeCount" column="like_count"/>
         <result property="commentCount" column="comment_count"/>
         <result property="favoriteCount" column="favorite_count"/>
+        <result property="shareCount" column="share_count"/>
         <result property="authorName" column="author_name"/>
         <result property="authorAvatar" column="author_avatar"/>
         <result property="categoryName" column="category_name"/>
@@ -88,7 +89,7 @@
     <select id="listWithAuthor" resultMap="articleWithTagResultMap">
         SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
                a.create_user, a.create_time, a.update_time,
-               a.view_count, a.like_count, a.comment_count, a.favorite_count,
+               a.view_count, a.like_count, a.comment_count, a.favorite_count, a.share_count,
                u.nickname AS author_name,
                u.user_pic AS author_avatar,
                c.category_name,
@@ -144,7 +145,7 @@
     <select id="listFeed" resultMap="articleWithTagResultMap">
         SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
                a.create_user, a.create_time, a.update_time,
-               a.view_count, a.like_count, a.comment_count, a.favorite_count,
+               a.view_count, a.like_count, a.comment_count, a.favorite_count, a.share_count,
                u.nickname AS author_name,
                u.user_pic AS author_avatar,
                c.category_name,
@@ -193,5 +194,14 @@
             #{id}
         </foreach>
     </select>
+
+    <update id="updateCounts">
+        UPDATE article
+        SET like_count = #{likeCount},
+            favorite_count = #{favoriteCount},
+            comment_count = #{commentCount},
+            share_count = #{shareCount}
+        WHERE id = #{id}
+    </update>
 
 </mapper>
