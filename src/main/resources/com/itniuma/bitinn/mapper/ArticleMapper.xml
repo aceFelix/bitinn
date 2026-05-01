@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itniuma.bitinn.mapper.article.ArticleMapper">
+
+    <resultMap id="articleResultMap" type="com.itniuma.bitinn.pojo.Article">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="coverImg" column="cover_img"/>
+        <result property="excerpt" column="excerpt"/>
+        <result property="state" column="state"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="createUser" column="create_user"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="viewCount" column="view_count"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="favoriteCount" column="favorite_count"/>
+        <result property="shareCount" column="share_count"/>
+        <result property="authorName" column="author_name"/>
+        <result property="authorAvatar" column="author_avatar"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="hotScore" column="hot_score"/>
+    </resultMap>
+
+    <resultMap id="articleWithTagResultMap" type="com.itniuma.bitinn.pojo.Article" extends="articleResultMap">
+        <collection property="tags" ofType="com.itniuma.bitinn.pojo.Tag">
+            <id property="id" column="tag_id"/>
+            <result property="tagName" column="tag_name"/>
+            <result property="tagColor" column="tag_color"/>
+        </collection>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO article (title, content, cover_img, excerpt, state, category_id, create_user, create_time, update_time,
+                            view_count, like_count, comment_count, favorite_count)
+        VALUES (#{title}, #{content}, #{coverImg}, #{excerpt}, #{state}, #{categoryId}, #{createUser},
+                #{createTime}, #{updateTime}, 0, 0, 0, 0)
+    </insert>
+
+    <update id="update">
+        UPDATE article
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="coverImg != null">cover_img = #{coverImg},</if>
+            <if test="excerpt != null">excerpt = #{excerpt},</if>
+            <if test="state != null">state = #{state},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM article WHERE id = #{id}
+    </delete>
+
+    <select id="findById" resultMap="articleResultMap">
+        SELECT a.*,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+        WHERE a.id = #{id}
+    </select>
+
+    <select id="list" resultMap="articleResultMap">
+        SELECT * FROM article
+        <where>
+            <if test="userId != null">
+                create_user = #{userId}
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="state != null and state != ''">
+                AND state = #{state}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="listWithAuthor" resultMap="articleWithTagResultMap">
+        SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
+               a.create_user, a.create_time, a.update_time,
+               a.view_count, a.like_count, a.comment_count, a.favorite_count, a.share_count,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name,
+               t.id AS tag_id, t.tag_name AS tag_name, t.tag_color AS tag_color
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+                 LEFT JOIN article_tag at ON a.id = at.article_id
+                 LEFT JOIN tag t ON at.tag_id = t.id
+        <where>
+            <if test="userId != null">
+                a.create_user = #{userId}
+            </if>
+            <if test="categoryId != null">
+                AND a.category_id = #{categoryId}
+            </if>
+            <if test="state != null and state != ''">
+                AND a.state = #{state}
+            </if>
+        </where>
+        ORDER BY a.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM article
+        <where>
+            <if test="userId != null">
+                create_user = #{userId}
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="state != null and state != ''">
+                AND state = #{state}
+            </if>
+        </where>
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE article SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <insert id="insertArticleTag">
+        INSERT INTO article_tag (article_id, tag_id, create_time) VALUES (#{articleId}, #{tagId}, NOW())
+    </insert>
+
+    <delete id="deleteArticleTagsByArticleId">
+        DELETE FROM article_tag WHERE article_id = #{articleId}
+    </delete>
+
+    <select id="listFeed" resultMap="articleWithTagResultMap">
+        SELECT a.id, a.title, a.cover_img, a.excerpt, a.state, a.category_id,
+               a.create_user, a.create_time, a.update_time,
+               a.view_count, a.like_count, a.comment_count, a.favorite_count, a.share_count,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name,
+               t.id AS tag_id, t.tag_name AS tag_name, t.tag_color AS tag_color
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+                 LEFT JOIN article_tag at ON a.id = at.article_id
+                 LEFT JOIN tag t ON at.tag_id = t.id
+        WHERE a.state = #{state}
+        <choose>
+            <when test="sortType == 'recommend'">
+                ORDER BY a.hot_score DESC, a.create_time DESC
+            </when>
+            <when test="sortType == 'hot'">
+                ORDER BY a.like_count * 2 + a.favorite_count * 3 + a.comment_count * 1.5 DESC, a.create_time DESC
+            </when>
+            <otherwise>
+                ORDER BY a.create_time DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countFeed" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM article a WHERE a.state = #{state}
+    </select>
+
+    <update id="recalculateHotScores">
+        UPDATE article
+        SET hot_score = (like_count * 2 + favorite_count * 3 + comment_count * 1.5)
+                        / POWER(TIMESTAMPDIFF(HOUR, create_time, NOW()) + 2, 1.5)
+        WHERE state = '已发布'
+    </update>
+
+    <select id="findByIds" resultMap="articleResultMap">
+        SELECT a.*,
+               u.nickname AS author_name,
+               u.user_pic AS author_avatar,
+               c.category_name
+        FROM article a
+                 LEFT JOIN user u ON a.create_user = u.id
+                 LEFT JOIN category c ON a.category_id = c.id
+        WHERE a.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="updateCounts">
+        UPDATE article
+        SET like_count = #{likeCount},
+            favorite_count = #{favoriteCount},
+            comment_count = #{commentCount},
+            share_count = #{shareCount}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

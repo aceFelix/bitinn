@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itniuma.bitinn.mapper.notification.NotificationMapper">
+
+    <resultMap id="NotificationMap" type="com.itniuma.bitinn.pojo.Notification">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="type" property="type"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="source_user_id" property="sourceUserId"/>
+        <result column="source_id" property="sourceId"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="is_read" property="isRead"/>
+        <result column="create_time" property="createTime"/>
+        <result column="source_username" property="sourceUsername"/>
+        <result column="source_user_avatar" property="sourceUserAvatar"/>
+    </resultMap>
+
+    <resultMap id="NotificationCountMap" type="com.itniuma.bitinn.pojo.NotificationCount">
+        <result column="user_id" property="userId"/>
+        <result column="unread_count" property="unreadCount"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="favorite_count" property="favoriteCount"/>
+        <result column="comment_count" property="commentCount"/>
+        <result column="follow_count" property="followCount"/>
+        <result column="repost_count" property="repostCount"/>
+    </resultMap>
+
+    <!-- 插入通知 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification (user_id, type, title, content, source_user_id, source_id, source_type, is_read, create_time)
+        VALUES (#{userId}, #{type}, #{title}, #{content}, #{sourceUserId}, #{sourceId}, #{sourceType}, 0, NOW())
+    </insert>
+
+    <!-- 查询用户的通知列表 -->
+    <select id="findByUserId" resultMap="NotificationMap">
+        SELECT n.*, u.username AS source_username, u.user_pic AS source_user_avatar
+        FROM notification n
+        LEFT JOIN user u ON n.source_user_id = u.id
+        WHERE n.user_id = #{userId}
+        ORDER BY n.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 查询用户的某类型通知 -->
+    <select id="findByUserIdAndType" resultMap="NotificationMap">
+        SELECT n.*, u.username AS source_username, u.user_pic AS source_user_avatar
+        FROM notification n
+        LEFT JOIN user u ON n.source_user_id = u.id
+        WHERE n.user_id = #{userId} AND n.type = #{type}
+        ORDER BY n.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 将通知标记为已读 -->
+    <update id="markAsRead">
+        UPDATE notification SET is_read = 1 WHERE id = #{id}
+    </update>
+
+    <!-- 标记所有通知为已读 -->
+    <update id="markAllAsRead">
+        UPDATE notification SET is_read = 1 WHERE user_id = #{userId} AND is_read = 0
+    </update>
+
+    <!-- 标记某类型通知为已读 -->
+    <update id="markAsReadByType">
+        UPDATE notification SET is_read = 1 WHERE user_id = #{userId} AND type = #{type} AND is_read = 0
+    </update>
+
+    <!-- 获取未读通知数量 -->
+    <select id="getUnreadCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM notification WHERE user_id = #{userId} AND is_read = 0
+    </select>
+
+    <!-- 获取各类别未读数 -->
+    <select id="getNotificationCount" resultMap="NotificationCountMap">
+        SELECT user_id,
+               COUNT(*) AS unread_count,
+               SUM(CASE WHEN type = 'like' AND is_read = 0 THEN 1 ELSE 0 END) AS like_count,
+               SUM(CASE WHEN type = 'favorite' AND is_read = 0 THEN 1 ELSE 0 END) AS favorite_count,
+               SUM(CASE WHEN type = 'comment' AND is_read = 0 THEN 1 ELSE 0 END) AS comment_count,
+               SUM(CASE WHEN type = 'follow' AND is_read = 0 THEN 1 ELSE 0 END) AS follow_count,
+               SUM(CASE WHEN type = 'repost' AND is_read = 0 THEN 1 ELSE 0 END) AS repost_count
+        FROM notification
+        WHERE user_id = #{userId}
+        GROUP BY user_id
+    </select>
+
+    <!-- 更新通知计数表 -->
+    <insert id="updateNotificationCount" databaseId="mysql">
+        INSERT INTO notification_count (user_id, unread_count,
+            <if test="type == 'like'">like_count</if>
+            <if test="type == 'favorite'">favorite_count</if>
+            <if test="type == 'comment'">comment_count</if>
+            <if test="type == 'follow'">follow_count</if>
+            <if test="type == 'repost'">repost_count</if>
+        ) VALUES (#{userId}, #{delta},
+            <if test="type == 'like'">#{delta}</if>
+            <if test="type == 'favorite'">#{delta}</if>
+            <if test="type == 'comment'">#{delta}</if>
+            <if test="type == 'follow'">#{delta}</if>
+            <if test="type == 'repost'">#{delta}</if>
+        )
+        ON DUPLICATE KEY UPDATE
+            unread_count = unread_count + #{delta},
+            <if test="type == 'like'">like_count = like_count + #{delta}</if>
+            <if test="type == 'favorite'">favorite_count = favorite_count + #{delta}</if>
+            <if test="type == 'comment'">comment_count = comment_count + #{delta}</if>
+            <if test="type == 'follow'">follow_count = follow_count + #{delta}</if>
+            <if test="type == 'repost'">repost_count = repost_count + #{delta}</if>
+    </insert>
+
+    <!-- 初始化用户通知计数 -->
+    <insert id="initNotificationCount">
+        INSERT IGNORE INTO notification_count (user_id, unread_count, like_count, favorite_count, comment_count, follow_count, repost_count)
+        VALUES (#{userId}, 0, 0, 0, 0, 0, 0)
+    </insert>
+
+    <!-- 删除旧通知 -->
+    <delete id="deleteOldNotifications">
+        DELETE FROM notification
+        WHERE user_id = #{userId}
+        AND id NOT IN (
+            SELECT id FROM (
+                SELECT id FROM notification WHERE user_id = #{userId}
+                ORDER BY create_time DESC LIMIT #{keepCount}
+            ) AS temp
+        )
+    </delete>
+
+</mapper>

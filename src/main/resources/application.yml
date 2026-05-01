@@ -1,0 +1,123 @@
+spring:
+  application:
+    name: bitinn
+  profiles:
+    active: local
+
+  # RabbitMQ 配置
+  rabbitmq:
+    # 基础配置
+    host: ${rabbitmq.host}       #
+    port: ${rabbitmq.port}                    
+    username: ${rabbitmq.username}               
+    password: ${rabbitmq.password}
+
+  # Elasticsearch 配置
+  elasticsearch:
+    uris: ${elasticsearch.uris}
+    username: ${elasticsearch.username}
+    password: ${elasticsearch.password}
+        
+  # 数据存储配置
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+    # Redis 配置
+    redis:
+      host: ${redis.host}
+      port: ${redis.port}
+      password: ${redis.password}
+    # MongoDB 配置
+    mongodb:
+      uri: mongodb://${mongodb.username}:${mongodb.password}@${mongodb.host}:${mongodb.port}/${mongodb.database}?authSource=${mongodb.authentication-database}
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${datasource.host}:${datasource.port}/${datasource.database}${datasource.path}
+    username: ${datasource.username}
+    password: ${datasource.password}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 10000
+      connection-test-query: SELECT 1
+  mail:
+    host: ${mail.host}
+    port: ${mail.port}
+    username: ${mail.username}
+    password: ${mail.password}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          ssl:
+            enable: true
+  messages:
+    encoding: UTF-8
+  ai:
+    vectorstore:
+      redis:
+        initialize-schema: false
+        index-name: bitinn-article-index
+        prefix: "article:vec:"
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      embedding:
+        options:
+          model: "qwen3-vl-embedding"
+        enabled: true
+      chat:
+        options:
+          multi-model: true
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+mybatis:
+  mapper-locations: classpath:com/itniuma/bitinn/mapper/*Mapper.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+rabbitmq:
+  exchanges:
+    data-sync: bitinn.data.sync
+  queues:
+    article-count-sync: bitinn.article.count.sync
+    es-sync: bitinn.es.sync
+
+website:
+  domain: ${website.domain}
+
+dromara:
+  x-file-storage:
+    default-platform: aliyun-oss-1
+    thumbnail-suffix: ".min.jpg"
+    aliyun-oss:
+      - platform: aliyun-oss-1
+        enable-storage: true
+        access-key: ${aliyun-oss.access-key}
+        secret-key: ${aliyun-oss.secret-key}
+        end-point: ${aliyun-oss.end-point}
+        bucket-name: ${aliyun-oss.bucket-name}
+        domain: ${aliyun-oss.domain}
+        base-path: ${aliyun-oss.base-path}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
